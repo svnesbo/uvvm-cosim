@@ -1,3 +1,9 @@
+# Typical CMake build directory
+build/
+
+# Clangd language server cache
+.cache/
+
 # Prerequisites
 *.d
 
