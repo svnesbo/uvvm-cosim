@@ -1,15 +1,18 @@
-# JSON-RPC based co-sim for UVVM
+# UVVM Co-simulation library using VHPI and JSON-RPC
 
-## NAME??
+## Project name
 
-- uvvm-rpc-cosim?
-- uvvm-json-rpc-cosim?
-- uvvm-cosim?
-- uvvm-json-rpc?
+- ~~uvvm-rpc-cosim?~~
+- ~~uvvm-json-rpc-cosim?~~
+- ~~uvvm-cosim?~~
+- ~~uvvm-json-rpc?~~
 
-For now I think I'll go with:
-- Project name: uvvm-cosim-json-rpc
-- Library name (VHPI): uvvm-cosim-vhpi
+~~For now I think I'll go with:~~
+- ~~Project name: uvvm-cosim-json-rpc~~
+- ~~Library name (VHPI): uvvm-cosim-vhpi~~
+
+
+Decided to use this name: **uvvm-cosim**
 
 
 ## JSON-RPC libraries in C++

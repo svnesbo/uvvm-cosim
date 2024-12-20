@@ -1,0 +1,17 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "Debug UVVM Cosim example client",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/uvvm_cosim_example_client",
+            "args": ["-q"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb"
+        }
+    ]
+}
