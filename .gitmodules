@@ -4,3 +4,6 @@
 [submodule "thirdparty/uvvm"]
 	path = thirdparty/uvvm
 	url = https://github.com/UVVM/UVVM.git
+[submodule "hdlregression"]
+	path = thirdparty/hdlregression
+	url = https://github.com/HDLUtils/hdlregression.git
