@@ -1,3 +1,6 @@
 [submodule "thirdparty/json-rpc-cxx"]
 	path = thirdparty/json-rpc-cxx
 	url = https://github.com/jsonrpcx/json-rpc-cxx.git
+[submodule "thirdparty/uvvm"]
+	path = thirdparty/uvvm
+	url = https://github.com/UVVM/UVVM.git
