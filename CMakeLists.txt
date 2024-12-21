@@ -22,6 +22,11 @@ add_custom_target(nvc_sim
                   COMMAND nvc -e tb
                   COMMAND nvc -r --load ./libuvvm_cosim_vhpi.so tb)
 
+add_custom_target(hdl_run
+                  DEPENDS uvvm_cosim_vhpi
+                  COMMAND python ${CMAKE_SOURCE_DIR}/run.py -s nvc -v)
+
+
 # JSON RPC example client
 add_executable(uvvm_cosim_example_client src/cpp/uvvm_cosim_example_client.cpp)
 target_include_directories(uvvm_cosim_example_client PRIVATE thirdparty/json-rpc-cxx/include thirdparty/json-rpc-cxx/vendor thirdparty/json-rpc-cxx/examples)

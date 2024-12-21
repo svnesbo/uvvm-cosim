@@ -86,6 +86,59 @@ void uart_transmit_queue_pop(const vhpiCbDataT* p_cb_data)
 // (use parameters as outputs?)
 
 
+void uvvm_cosim_vhpi_start_sim(const vhpiCbDataT* p_cb_data)
+{
+  // Need to use flush stdout (or just use C++ std:cout ++ std::endl) since
+  // this function blocks, otherwise we may not get the last output from sim or VHPI
+  // until after this function returns.
+  //std::cout << "uvvm_cosim_vhpi_start_sim: Waiting to start sim" << std::endl;
+  printf("uvvm_cosim_vhpi_start_sim: Waiting to start sim\n");
+  fflush(stdout);
+
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(5.0s);
+
+  vhpi_printf("uvvm_cosim_vhpi_start_sim: Starting sim");
+}
+
+void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
+{
+  constexpr size_t C_MAX_STR_SIZE = 256;
+
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
+  vhpiHandleT h_param2 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 2);
+
+  vhpiCharT str_param0[C_MAX_STR_SIZE];
+  vhpiCharT str_param1[C_MAX_STR_SIZE];
+
+  vhpiValueT val_param0 = {.format = vhpiStrVal };
+  vhpiValueT val_param1 = {.format = vhpiStrVal };
+  vhpiValueT val_param2 = {.format = vhpiIntVal };
+
+  val_param0.bufSize=sizeof(str_param0);
+  val_param0.value.str=str_param0;
+  val_param1.bufSize=sizeof(str_param1);
+  val_param1.value.str=str_param1;
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    printf("Failed to get param 0\n");
+  }
+  if (vhpi_get_value(h_param1, &val_param1) != 0) {
+    printf("Failed to get param 1\n");
+  }
+  if (vhpi_get_value(h_param2, &val_param2) != 0) {
+    printf("Failed to get param 2\n");
+  }
+
+  vhpi_printf("uvvm_cosim_vhpi_report_vvc_info: Got:\n"
+	      "Type=%s, Channel=%s, ID=%d\n",
+	      val_param0.value.str,
+	      val_param1.value.str,
+	      val_param2.value.intg
+	     );
+}
+
 
 //void func(int a, int b)
 void func(const vhpiCbDataT* p_cb_data)
@@ -113,6 +166,23 @@ void func(const vhpiCbDataT* p_cb_data)
   vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
 }
 
+void check_foreignf_registration(const vhpiHandleT& h, const char* func_name, vhpiForeignKindT kind)
+{
+  vhpiForeignDataT check;
+
+  if (vhpi_get_foreignf_info(h, &check)) {
+    vhpi_printf("vhpi_get_foreignf_info failed\n");
+  }
+
+  if (check.kind != kind) {
+    vhpi_printf("Wrong kind registered for foreign function\n");
+  }
+
+  if (strcmp(check.modelName, func_name) != 0) {
+    vhpi_printf("Wrong model name registered for foreign function\n");
+  }
+}
+
 void startup_1(void)
 {
   printf("startup_1 called\n");
@@ -127,20 +197,23 @@ void startup_1(void)
   };
 
   vhpiHandleT h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, vhpi_func_name, vhpiFuncF);
 
-  vhpiForeignDataT check;
+  static char uvvm_cosim_vhpi_report_vvc_info_name[] = "uvvm_cosim_vhpi_report_vvc_info";
+  foreignData.kind=vhpiProcF;
+  foreignData.modelName=uvvm_cosim_vhpi_report_vvc_info_name;
+  foreignData.execf=uvvm_cosim_vhpi_report_vvc_info;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, uvvm_cosim_vhpi_report_vvc_info_name, vhpiProcF);
 
-  if (vhpi_get_foreignf_info(h, &check)) {
-    vhpi_printf("vhpi_get_foreignf_info failed\n");
-  }
+  static char uvvm_cosim_vhpi_start_sim_name[] = "uvvm_cosim_vhpi_start_sim";
+  foreignData.kind=vhpiProcF;
+  foreignData.modelName=uvvm_cosim_vhpi_start_sim_name;
+  foreignData.execf=uvvm_cosim_vhpi_start_sim;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, uvvm_cosim_vhpi_start_sim_name, vhpiProcF);
 
-  if (check.kind != vhpiFuncF) {
-    vhpi_printf("Wrong kind registered for foreign function\n");
-  }
-
-  if (strcmp(check.modelName, "vhpi_func") != 0) {
-    vhpi_printf("Wrong model name registered for foreign function\n");
-  }
+  vhpi_printf("Registered all foreign functions/procedures\n");
 }
 
 long convert_time_to_ns(const vhpiTimeT *time)
@@ -162,7 +235,7 @@ void end_of_sim_cb(const vhpiCbDataT * cb_data) {
 
   using namespace std::chrono_literals;
   vhpi_printf("Wait for a while so we can test client...");
-  std::this_thread::sleep_for(60.0s);
+  std::this_thread::sleep_for(10.0s);
 
   stop_rpc_server();
 }
