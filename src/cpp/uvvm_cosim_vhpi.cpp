@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 #include <deque>
 #include <thread>
 #include <vector>
 #include <vhpi_user.h>
 #include "uvvm_cosim_server.h"
+#include "uvvm_cosim_types.h"
 #include "shared_vector.h"
 
 #include <cpphttplibconnector.hpp>
@@ -23,12 +25,15 @@ extern "C" {
 shared_vector<uint8_t> uart_transmit_queue;
 shared_vector<uint8_t> uart_receive_queue;
 
+// List of VVCs in the simulation
+shared_vector<VVCInfo> vvc_list;
+
 // ----------------------------------------------------------------------------
 // SERVER FUNCTIONS - UART
 // ----------------------------------------------------------------------------
 
 
-UVVMCosimServer cosimServerMethods(uart_transmit_queue, uart_receive_queue); // Todo: rename this class?
+UVVMCosimServer cosimServerMethods(uart_transmit_queue, uart_receive_queue, vvc_list); // Todo: rename this class?
 jsonrpccxx::JsonRpc2Server rpcServer;
 CppHttpLibServerConnector* httpServer = NULL;
 
@@ -38,6 +43,7 @@ void start_rpc_server(void)
 
   rpcServer.Add("UartTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::UartTransmit, cosimServerMethods), {"data"});
   rpcServer.Add("UartReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::UartReceive, cosimServerMethods), {"length"});
+  rpcServer.Add("GetVVCInfo", jsonrpccxx::GetHandle(&UVVMCosimServer::GetVVCInfo, cosimServerMethods), {});
 
   httpServer = new CppHttpLibServerConnector(rpcServer, 8484);
 
@@ -137,6 +143,18 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
 	      val_param1.value.str,
 	      val_param2.value.intg
 	     );
+
+  vvc_list([&](auto &v){
+	     // Todo: I'd like to construct in place (with emplace_back)
+	     // How can I do that for struct? Does it need to have constructor maybe?
+	     v.push_back(VVCInfo{
+		 .vvc_type        = std::string(reinterpret_cast<char*>(val_param0.value.str)),
+		 .vvc_channel     = std::string(reinterpret_cast<char*>(val_param1.value.str)),
+		 .vvc_instance_id = val_param2.value.intg
+	       });
+	     // Note: vhpiCharT is defined as unsigned char
+	     //       std::string doesn't have constructor for uchar
+	   });
 }
 
 
@@ -235,7 +253,7 @@ void end_of_sim_cb(const vhpiCbDataT * cb_data) {
 
   using namespace std::chrono_literals;
   vhpi_printf("Wait for a while so we can test client...");
-  std::this_thread::sleep_for(10.0s);
+  std::this_thread::sleep_for(60.0s);
 
   stop_rpc_server();
 }

@@ -1,21 +1,29 @@
+#pragma once
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include "shared_vector.h"
-
+#include "uvvm_cosim_types.h"
 
 class UVVMCosimServer {
 private:
   // Todo: Use deque instead
   shared_vector<uint8_t> &transmit_queue;
   shared_vector<uint8_t> &receive_queue;
+  shared_vector<VVCInfo> &vvc_list;
   
 public:
   UVVMCosimServer(shared_vector<uint8_t> &transmit_queue,
-			shared_vector<uint8_t> &receive_queue)
+		  shared_vector<uint8_t> &receive_queue,
+		  shared_vector<VVCInfo> &vvc_list)
     : transmit_queue(transmit_queue)
     , receive_queue(receive_queue)
+    , vvc_list(vvc_list)
   {
+  }
+
+  std::vector<VVCInfo> GetVVCInfo() {
+    return vvc_list([](auto v){return v;});
   }
 
   bool UartTransmit(std::vector<uint8_t> data) {
@@ -60,6 +68,5 @@ public:
 
     return data;
   }
-  
 };
   

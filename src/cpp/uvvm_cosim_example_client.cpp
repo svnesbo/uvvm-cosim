@@ -5,6 +5,7 @@
 #include <jsonrpccxx/client.hpp>
 #include <jsonrpccxx/iclientconnector.hpp>
 #include <cpphttplibconnector.hpp>
+#include "uvvm_cosim_types.h"
 
 
 // Example client for UVVM cosim
@@ -14,6 +15,10 @@ public:
   explicit UVVMCosimExampleClient(jsonrpccxx::IClientConnector &connector)
     : jsonrpccxx::JsonRpcClient(connector, jsonrpccxx::version::v2)
   {
+  }
+
+  std::vector<VVCInfo> GetVVCInfo() {
+    return CallMethod<std::vector<VVCInfo>>(1, "GetVVCInfo", {});
   }
 
   bool UartTransmit(std::vector<uint8_t> data)
@@ -63,5 +68,14 @@ int main(int argc, char** argv)
       first=false;
     }
     std::cout << "]" << std::endl;
+  }
+
+  std::cout << "Get info about VVCs" << std::endl;
+  auto vvc_info = client.GetVVCInfo();
+
+  for (auto& vvc : vvc_info) {
+    std::cout << "Type: " << vvc.vvc_type << ", ";
+    std::cout << "Channel: " << vvc.vvc_channel << ", ";
+    std::cout << "Instance ID: " << vvc.vvc_instance_id << std::endl;
   }
 }
