@@ -14,8 +14,17 @@ package uvvm_cosim_priv_pkg is
     constant vvc_instance_id : in integer
     );
 
+  function uart_transmit_queue_empty return integer;
+
+  function uart_transmit_queue_get return integer;
+
+  procedure uart_receive_queue_put(constant byte : in integer);
+
   attribute foreign of uvvm_cosim_vhpi_start_sim       : procedure is "VHPI vhpi_lib uvvm_cosim_vhpi_start_sim";
   attribute foreign of uvvm_cosim_vhpi_report_vvc_info : procedure is "VHPI vhpi_lib uvvm_cosim_vhpi_report_vvc_info";
+  attribute foreign of uart_transmit_queue_empty       : function  is "VHPI vhpi_lib uart_transmit_queue_empty";
+  attribute foreign of uart_transmit_queue_get         : function  is "VHPI vhpi_lib uart_transmit_queue_get";
+  attribute foreign of uart_receive_queue_put          : procedure is "VHPI vhpi_lib uart_receive_queue_put";
 
 
   function to_string(constant ch : t_channel) return string;
@@ -34,6 +43,23 @@ package body uvvm_cosim_priv_pkg is
     constant vvc_type        : in string;
     constant vvc_channel     : in string;
     constant vvc_instance_id : in integer
+    ) is
+  begin
+    report "Error: Should use foreign VHPI implementation" severity failure;
+  end procedure;
+
+  function uart_transmit_queue_empty return integer is
+  begin
+    report "Error: Should use foreign VHPI implementation" severity failure;
+  end function;
+
+  function uart_transmit_queue_get return integer is
+  begin
+    report "Error: Should use foreign VHPI implementation" severity failure;
+  end function;
+
+  procedure uart_receive_queue_put(
+    constant byte : in integer
     ) is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;

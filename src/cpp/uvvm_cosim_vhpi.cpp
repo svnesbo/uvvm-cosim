@@ -9,6 +9,7 @@
 #include <vhpi_user.h>
 #include "uvvm_cosim_server.h"
 #include "uvvm_cosim_types.h"
+#include "shared_deque.h"
 #include "shared_vector.h"
 
 #include <cpphttplibconnector.hpp>
@@ -20,10 +21,8 @@ extern "C" {
 
 // UART transmit and receive queues
 // Shared between server and VHPI/VHDL
-//std::deque<uint8_t> uart_transmit_queue;
-//std::deque<uint8_t> uart_receive_queue;
-shared_vector<uint8_t> uart_transmit_queue;
-shared_vector<uint8_t> uart_receive_queue;
+shared_deque<uint8_t> uart_transmit_queue;
+shared_deque<uint8_t> uart_receive_queue;
 
 // List of VVCs in the simulation
 shared_vector<VVCInfo> vvc_list;
@@ -42,26 +41,13 @@ void start_rpc_server(void)
   std::cout << "Starting JSON RPC server" << std::endl;
 
   rpcServer.Add("UartTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::UartTransmit, cosimServerMethods), {"data"});
-  rpcServer.Add("UartReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::UartReceive, cosimServerMethods), {"length"});
+  rpcServer.Add("UartReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::UartReceive, cosimServerMethods), {"length", "all_or_nothing"});
   rpcServer.Add("GetVVCInfo", jsonrpccxx::GetHandle(&UVVMCosimServer::GetVVCInfo, cosimServerMethods), {});
 
   httpServer = new CppHttpLibServerConnector(rpcServer, 8484);
 
   std::cout << "Start listening on HTTP server" << std::endl;
   httpServer->StartListening();
-
-  // Add some data to receive queue
-  // Just for testing (so it can be received by example client)
-  uart_receive_queue([](auto &v) {
-		       v.push_back(0x12);
-		       v.push_back(0x34);
-		       v.push_back(0x56);
-		       v.push_back(0x78);
-		       v.push_back(0x99);
-		       v.push_back(0xAA);
-		       v.push_back(0xAB);
-		       v.push_back(0xCD);
-		     });
 }
 
 void stop_rpc_server(void)
@@ -76,33 +62,68 @@ void stop_rpc_server(void)
 // VHPI FUNCTIONS - UART
 // ----------------------------------------------------------------------------
 
-//bool uart_transmit_queue_empty(void)
-void uart_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
-{
-}
-
-//uint8_t uart_transmit_queue_pop(void)
-void uart_transmit_queue_pop(const vhpiCbDataT* p_cb_data)
-{
-}
 
 // Maybe I don't need uart_transmit_queue_empty?
 // Sufficient to have the pop function (or call it get byte or something)
 // and have that return a status (bool) as well as a byte?
 // (use parameters as outputs?)
 
+//int uart_transmit_queue_empty(void)
+void uart_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
+{
+  bool empty = uart_transmit_queue([](auto &q) { return q.empty(); });
+
+  // Todo: Is there a more appropriate format for a boolean than vhpiIntVal?
+  vhpiValueT ret_val = {
+    .format = vhpiIntVal,
+    .value = { .intg = (empty ? 1 : 0) }
+  };
+  vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
+}
+
+//uint8_t uart_transmit_queue_get(void)
+void uart_transmit_queue_get(const vhpiCbDataT* p_cb_data)
+{
+  uint8_t byte = 0;
+  uart_transmit_queue([&](auto &q) {
+			if (q.empty()) {
+			  vhpi_assert(vhpiError,
+				     "uart_transmit_queue_get called on empty queue");
+			}
+			byte = q.front(); q.pop_front();
+		      });
+
+  // Todo: Is there a more appropriate format for a byte than vhpiIntVal?
+  vhpiValueT ret_val = {
+    .format = vhpiIntVal,
+    .value = { .intg = byte }
+  };
+  vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
+}
+
+//void uart_receive_queue_put(uint8_t byte)
+void uart_receive_queue_put(const vhpiCbDataT* p_cb_data)
+{
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // Todo: Is there a more appropriate parameter format for a byte than vhpiIntVal?
+  uint8_t byte = val_param0.value.intg;
+
+  uart_receive_queue([&](auto &q) { q.push_back(byte); });
+}
+
 
 void uvvm_cosim_vhpi_start_sim(const vhpiCbDataT* p_cb_data)
 {
-  // Need to use flush stdout (or just use C++ std:cout ++ std::endl) since
-  // this function blocks, otherwise we may not get the last output from sim or VHPI
-  // until after this function returns.
-  //std::cout << "uvvm_cosim_vhpi_start_sim: Waiting to start sim" << std::endl;
-  printf("uvvm_cosim_vhpi_start_sim: Waiting to start sim\n");
-  fflush(stdout);
+  vhpi_printf("uvvm_cosim_vhpi_start_sim: Waiting to start sim");
 
   using namespace std::chrono_literals;
-  std::this_thread::sleep_for(5.0s);
+  std::this_thread::sleep_for(2.0s);
 
   vhpi_printf("uvvm_cosim_vhpi_start_sim: Starting sim");
 }
@@ -128,21 +149,20 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
   val_param1.value.str=str_param1;
 
   if (vhpi_get_value(h_param0, &val_param0) != 0) {
-    printf("Failed to get param 0\n");
+    vhpi_printf("Failed to get param 0");
   }
   if (vhpi_get_value(h_param1, &val_param1) != 0) {
-    printf("Failed to get param 1\n");
+    vhpi_printf("Failed to get param 1");
   }
   if (vhpi_get_value(h_param2, &val_param2) != 0) {
-    printf("Failed to get param 2\n");
+    vhpi_printf("Failed to get param 2");
   }
 
-  vhpi_printf("uvvm_cosim_vhpi_report_vvc_info: Got:\n"
-	      "Type=%s, Channel=%s, ID=%d\n",
+  vhpi_printf("uvvm_cosim_vhpi_report_vvc_info: Got:");
+  vhpi_printf("Type=%s, Channel=%s, ID=%d",
 	      val_param0.value.str,
-	      val_param1.value.str,
-	      val_param2.value.intg
-	     );
+              val_param1.value.str,
+	      val_param2.value.intg);
 
   vvc_list([&](auto &v){
 	     // Todo: I'd like to construct in place (with emplace_back)
@@ -161,7 +181,7 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
 //void func(int a, int b)
 void func(const vhpiCbDataT* p_cb_data)
 {
-  printf("func called\n");
+  vhpi_printf("func called");
 
   vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
   vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
@@ -169,13 +189,13 @@ void func(const vhpiCbDataT* p_cb_data)
   vhpiValueT val_param1 = {.format = vhpiIntVal };
 
   if (vhpi_get_value(h_param0, &val_param0) != 0) {
-    printf("Failed to get param 0\n");
+    vhpi_printf("Failed to get param 0");
   }
   if (vhpi_get_value(h_param1, &val_param1) != 0) {
-    printf("Failed to get param 1\n");
+    vhpi_printf("Failed to get param 1");
   }
 
-  printf("Called with params: %d, %d.\n", val_param0.value.intg, val_param1.value.intg);
+  vhpi_printf("Called with params: %d, %d.", val_param0.value.intg, val_param1.value.intg);
 
   vhpiValueT ret_val = {
     .format = vhpiIntVal,
@@ -189,21 +209,21 @@ void check_foreignf_registration(const vhpiHandleT& h, const char* func_name, vh
   vhpiForeignDataT check;
 
   if (vhpi_get_foreignf_info(h, &check)) {
-    vhpi_printf("vhpi_get_foreignf_info failed\n");
+    vhpi_printf("vhpi_get_foreignf_info failed");
   }
 
   if (check.kind != kind) {
-    vhpi_printf("Wrong kind registered for foreign function\n");
+    vhpi_printf("Wrong kind registered for foreign function");
   }
 
   if (strcmp(check.modelName, func_name) != 0) {
-    vhpi_printf("Wrong model name registered for foreign function\n");
+    vhpi_printf("Wrong model name registered for foreign function");
   }
 }
 
 void startup_1(void)
 {
-  printf("startup_1 called\n");
+  vhpi_printf("startup_1 called");
 
   static char vhpi_lib_name[] = "vhpi_lib";
   static char vhpi_func_name[] = "vhpi_func";
@@ -231,7 +251,28 @@ void startup_1(void)
   h = vhpi_register_foreignf(&foreignData);
   check_foreignf_registration(h, uvvm_cosim_vhpi_start_sim_name, vhpiProcF);
 
-  vhpi_printf("Registered all foreign functions/procedures\n");
+  static char uart_transmit_queue_empty_name[] = "uart_transmit_queue_empty";
+  foreignData.kind=vhpiFuncF;
+  foreignData.modelName=uart_transmit_queue_empty_name;
+  foreignData.execf=uart_transmit_queue_empty;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, uart_transmit_queue_empty_name, vhpiFuncF);
+
+  static char uart_transmit_queue_get_name[] = "uart_transmit_queue_get";
+  foreignData.kind=vhpiFuncF;
+  foreignData.modelName=uart_transmit_queue_get_name;
+  foreignData.execf=uart_transmit_queue_get;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, uart_transmit_queue_get_name, vhpiFuncF);
+
+  static char uart_receive_queue_put_name[] = "uart_receive_queue_put";
+  foreignData.kind=vhpiProcF;
+  foreignData.modelName=uart_receive_queue_put_name;
+  foreignData.execf=uart_receive_queue_put;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, uart_receive_queue_put_name, vhpiFuncF);
+
+  vhpi_printf("Registered all foreign functions/procedures");
 }
 
 long convert_time_to_ns(const vhpiTimeT *time)
@@ -240,7 +281,7 @@ long convert_time_to_ns(const vhpiTimeT *time)
 }
 
 void start_of_sim_cb(const vhpiCbDataT * cb_data) {
-  vhpi_printf("Start of simulation\n");
+  vhpi_printf("Start of simulation");
   start_rpc_server();
 }
 
@@ -249,18 +290,18 @@ void end_of_sim_cb(const vhpiCbDataT * cb_data) {
   long cycles;
 
   vhpi_get_time(&t, &cycles);
-  vhpi_printf("End of simulation (after %ld cycles and %ld ns).\n", cycles, convert_time_to_ns(&t));
+  vhpi_printf("End of simulation (after %ld cycles and %ld ns).", cycles, convert_time_to_ns(&t));
 
   using namespace std::chrono_literals;
   vhpi_printf("Wait for a while so we can test client...");
-  std::this_thread::sleep_for(60.0s);
+  std::this_thread::sleep_for(5.0s);
 
   stop_rpc_server();
 }
 
 void startup_2()
 {
-  vhpi_printf("startup_2\n");
+  vhpi_printf("startup_2");
 
   vhpiCbDataT cb_data;
 

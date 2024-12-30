@@ -26,12 +26,26 @@ public:
     return CallMethod<bool>(1, "UartTransmit", {data});
   }
 
-  std::vector<uint8_t> UartReceive(unsigned int length)
+  std::vector<uint8_t> UartReceive(unsigned int length, bool all_or_nothing)
   {
-    return CallMethod<std::vector<uint8_t>>(1, "UartReceive", {length});
+    return CallMethod<std::vector<uint8_t>>(1, "UartReceive", {length, all_or_nothing});
   }
 };
 
+
+void print_received_data(const std::vector<uint8_t>& data)
+{
+  std::cout << "data = [";
+  bool first = true;
+  for (auto &b : data) {
+    if (!first) {
+      std::cout << ",";
+    }
+    std::cout << std::hex << (int)b;
+    first = false;
+  }
+  std::cout << "]" << std::endl << std::dec;
+}
 
 // Test connecting, transmitting and receiving some bytes
 int main(int argc, char** argv)
@@ -47,27 +61,70 @@ int main(int argc, char** argv)
 
   std::this_thread::sleep_for(0.5s);
 
-  std::cout << "Transmit some data" << std::endl;
+  std::cout << "Transmit some data..." << std::endl;
 
   client.UartTransmit({0xCA, 0xFE, 0xAA, 0x12, 0x34, 0x55});
 
-  std::cout << "Receive some data" << std::endl;
+  // Assume data has been transmitted/received after 1.0 seconds
+  std::this_thread::sleep_for(1.0s);
 
-  auto data = client.UartReceive(5);
-
-  std::cout << "Got " << data.size() << " bytes." << std::endl;
-
-  if (!data.empty()) {
-    std::cout << "data = [";
-    bool first=true;
-    for (auto &b : data) {
-      if (!first) {
-	std::cout << ",";
-      }
-      std::cout << std::hex << (int) b;
-      first=false;
+  std::cout << "Request to receive 5 bytes..." << std::endl;
+  {
+    auto data = client.UartReceive(5, false);
+    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
     }
-    std::cout << "]" << std::endl;
+  }
+
+  std::cout << "Request to receive 5 bytes (more than available)..." << std::endl;
+  {
+    auto data = client.UartReceive(5, true);
+    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+  std::cout << "Request to receive 5 bytes or whatever is available..." << std::endl;
+  {
+    auto data = client.UartReceive(5, false);
+    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+  // Transmit some more data
+  client.UartTransmit({0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC});
+  client.UartTransmit({0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
+
+  // Assume data has been transmitted/received after 1.0 seconds
+  std::this_thread::sleep_for(1.0s);
+
+  std::cout << "Request to receive 12 bytes or whatever is available..." << std::endl;
+  {
+    auto data = client.UartReceive(12, false);
+    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+  // Transmit some more data
+  client.UartTransmit({0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C});
+  client.UartTransmit({0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12});
+
+  // Assume data has been transmitted/received after 1.0 seconds
+  std::this_thread::sleep_for(1.0s);
+
+  std::cout << "Request to receive 12 bytes or whatever is available..." << std::endl;
+  {
+    auto data = client.UartReceive(12, false);
+    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
   }
 
   std::cout << "Get info about VVCs" << std::endl;

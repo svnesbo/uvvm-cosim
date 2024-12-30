@@ -34,18 +34,18 @@ architecture sim of tb is
   signal y   : integer;
 
   signal uart0_rx : std_logic;
-  signal uart0_tx : std_logic;
+  signal uart0_tx : std_logic := '1';
   signal uart1_rx : std_logic;
-  signal uart1_tx : std_logic;
+  signal uart1_tx : std_logic := '1';
 
   constant C_CLK_PERIOD : time    := 20 ns;
   constant C_CLK_FREQ   : natural := 50000000;
-  constant C_BAUDRATE   : natural := 115200;
+  constant C_BAUDRATE   : natural := 1000000;
 
 begin
 
-  uart0_rx <= uart1_tx;
-  uart1_rx <= uart0_tx;
+  uart0_rx <= uart1_tx after 10 ns;
+  uart1_rx <= uart0_tx after 10 ns;
 
   inst_uvvm_cosim_sched: entity work.uvvm_cosim_sched
     generic map (
@@ -99,16 +99,41 @@ begin
     enable_log_msg(ID_LOG_HDR);
     enable_log_msg(ID_VVC_ACTIVITY);
 
+    disable_log_msg(UART_VVCT, 0, RX, ALL_MESSAGES);
+    disable_log_msg(UART_VVCT, 0, TX, ALL_MESSAGES);
+    disable_log_msg(UART_VVCT, 1, RX, ALL_MESSAGES);
+    disable_log_msg(UART_VVCT, 1, TX, ALL_MESSAGES);
+    enable_log_msg(UART_VVCT, 0, RX, ID_BFM);
+    enable_log_msg(UART_VVCT, 0, TX, ID_BFM);
+    enable_log_msg(UART_VVCT, 1, RX, ID_BFM);
+    enable_log_msg(UART_VVCT, 1, TX, ID_BFM);
 
     -----------------------------------------------------------------------------
     -- UART VVC config
     -----------------------------------------------------------------------------
     v_uart_bfm_config.parity                 := PARITY_NONE;
-    v_uart_bfm_config.bit_time               := (1 sec) / 115200;
+    v_uart_bfm_config.bit_time               := (1 sec) / C_BAUDRATE;
     shared_uart_vvc_config(RX, 0).bfm_config := v_uart_bfm_config;
     shared_uart_vvc_config(TX, 0).bfm_config := v_uart_bfm_config;
     shared_uart_vvc_config(RX, 1).bfm_config := v_uart_bfm_config;
     shared_uart_vvc_config(TX, 1).bfm_config := v_uart_bfm_config;
+
+    -- Note: Default is timeout = 0 (never time out)
+    shared_uart_vvc_config(RX, 1).bfm_config.timeout          := 0 ns;
+    shared_uart_vvc_config(RX, 1).bfm_config.timeout_severity := NO_ALERT;
+
+    -- Here we test with an actual timeout..
+    -- Note:
+    -- This does NOT work reliably because of how timeout is implemented in the BFM
+    -- Use infinite timeout instead.
+    --shared_uart_vvc_config(RX, 1).bfm_config.timeout          := 1000 us;
+    --shared_uart_vvc_config(RX, 1).bfm_config.timeout_severity := NOTE;
+
+    -----------------------------------------------------------------------------
+    -- Start clock
+    -----------------------------------------------------------------------------
+    wait for C_CLK_PERIOD;
+    start_clock(CLOCK_GENERATOR_VVCT, 0, "Start clock generator");
 
     report "Starting test";
 
@@ -118,7 +143,13 @@ begin
 
     wait for 50 ns;
 
-    report "Done. y = " & integer'image(y);
+    report "Got y = " & integer'image(y) & " from foreign vhpi_func()";
+
+    wait for 1000 ms;
+
+    log(ID_LOG_HDR, "SIMULATION COMPLETED", C_SCOPE);
+
+    report_alert_counters(FINAL);       -- Report final counters and print conclusion for simulation (Success/Fail)
 
     std.env.stop; -- or std.env.finish
   end process;

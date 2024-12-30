@@ -24,7 +24,7 @@ add_custom_target(nvc_sim
 
 add_custom_target(hdl_run
                   DEPENDS uvvm_cosim_vhpi
-                  COMMAND python ${CMAKE_SOURCE_DIR}/run.py -s nvc -v)
+                  COMMAND python ${CMAKE_SOURCE_DIR}/run.py -fr -s nvc -v)
 
 
 # JSON RPC example client
