@@ -82,7 +82,22 @@ void stop_rpc_server(void)
 //int uart_transmit_queue_empty(void)
 void uart_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
 {
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
+
   bool empty = uart_transmit_queue([](auto &q) { return q.empty(); });
+
+  // NOTE: Hardcoded for VVC ID 0 for now!
+  if (vvc_idx != 0) {
+    empty = true;
+  }
 
   // Todo: Is there a more appropriate format for a boolean than vhpiIntVal?
   vhpiValueT ret_val = {
@@ -95,6 +110,16 @@ void uart_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
 //uint8_t uart_transmit_queue_get(void)
 void uart_transmit_queue_get(const vhpiCbDataT* p_cb_data)
 {
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
+
   uint8_t byte = 0;
   uart_transmit_queue([&](auto &q) {
 			if (q.empty()) {
@@ -122,8 +147,17 @@ void uart_receive_queue_put(const vhpiCbDataT* p_cb_data)
     vhpi_printf("Failed to get param 0");
   }
 
+  vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
+  vhpiValueT val_param1 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param1, &val_param1) != 0) {
+    vhpi_printf("Failed to get param 1");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
   // Todo: Is there a more appropriate parameter format for a byte than vhpiIntVal?
-  uint8_t byte = val_param0.value.intg;
+  uint8_t byte = val_param1.value.intg;
 
   uart_receive_queue([&](auto &q) { q.push_back(byte); });
 }
@@ -131,7 +165,22 @@ void uart_receive_queue_put(const vhpiCbDataT* p_cb_data)
 //int axis_transmit_queue_empty(void)
 void axis_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
 {
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
+
   bool empty = axis_transmit_queue([](auto &q) { return q.empty(); });
+
+  // NOTE: Hardcoded for VVC ID 0 for now!
+  if (vvc_idx != 0) {
+    empty = true;
+  }
 
   // Todo: Is there a more appropriate format for a boolean than vhpiIntVal?
   vhpiValueT ret_val = {
@@ -144,6 +193,16 @@ void axis_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
 //uint8_t axis_transmit_queue_get(void)
 void axis_transmit_queue_get(const vhpiCbDataT* p_cb_data)
 {
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
+
   uint8_t byte = 0;
   axis_transmit_queue([&](auto &q) {
 			if (q.empty()) {
@@ -171,8 +230,17 @@ void axis_receive_queue_put(const vhpiCbDataT* p_cb_data)
     vhpi_printf("Failed to get param 0");
   }
 
+  vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
+  vhpiValueT val_param1 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param1, &val_param1) != 0) {
+    vhpi_printf("Failed to get param 1");
+  }
+
+  // NOTE: vvc_idx not used yet
+  int vvc_idx = val_param0.value.intg;
   // Todo: Is there a more appropriate parameter format for a byte than vhpiIntVal?
-  uint8_t byte = val_param0.value.intg;
+  uint8_t byte = val_param1.value.intg;
 
   axis_receive_queue([&](auto &q) { q.push_back(byte); });
 }

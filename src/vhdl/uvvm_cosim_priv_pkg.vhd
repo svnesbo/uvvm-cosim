@@ -14,17 +14,32 @@ package uvvm_cosim_priv_pkg is
     constant vvc_instance_id : in integer
     );
 
-  function uart_transmit_queue_empty return integer;
+  -- TODO: Replace and add attribute for VHPI implementation
+  function cosim_vvc_listen_enable (
+    constant vvc_type        : string;
+    constant vvc_channel     : string;
+    constant vvc_instance_id : integer)
+    return boolean;
 
-  function uart_transmit_queue_get return integer;
+  -- Todo:
+  -- Replace dedicated uart/axis functions/procedures with common ones that takes
+  -- VVC type as parameter. Can call them:
+  -- * cosim_transmit_queue_empty
+  -- * cosim_transmit_queue_get
+  -- * cosim_receive_queue_put
+  function uart_transmit_queue_empty(constant vvc_idx : in integer) return integer;
 
-  procedure uart_receive_queue_put(constant byte : in integer);
+  function uart_transmit_queue_get(constant vvc_idx : in integer) return integer;
 
-  function axis_transmit_queue_empty return integer;
+  procedure uart_receive_queue_put(constant vvc_idx : in integer;
+                                   constant byte    : in integer);
 
-  function axis_transmit_queue_get return integer;
+  function axis_transmit_queue_empty(constant vvc_idx : in integer) return integer;
 
-  procedure axis_receive_queue_put(constant byte : in integer);
+  function axis_transmit_queue_get(constant vvc_idx : in integer) return integer;
+
+  procedure axis_receive_queue_put(constant vvc_idx : in integer;
+                                   constant byte    : in integer);
 
   attribute foreign of uvvm_cosim_vhpi_start_sim       : procedure is "VHPI vhpi_lib uvvm_cosim_vhpi_start_sim";
   attribute foreign of uvvm_cosim_vhpi_report_vvc_info : procedure is "VHPI vhpi_lib uvvm_cosim_vhpi_report_vvc_info";
@@ -58,35 +73,55 @@ package body uvvm_cosim_priv_pkg is
     report "Error: Should use foreign VHPI implementation" severity failure;
   end procedure;
 
-  function uart_transmit_queue_empty return integer is
+  -- TODO: Replace with VHPI implementation
+  function cosim_vvc_listen_enable (
+    constant vvc_type        : string;
+    constant vvc_channel     : string;
+    constant vvc_instance_id : integer)
+    return boolean is
+  begin
+    -- Hardcoded to allow listen on UART VVC 1 and AXISTREAM VVC 1
+    -- (setup for receive in the testbench and used in the client example)
+    if (vvc_type = "UART_VVC" and vvc_channel = "RX" and vvc_instance_id = 1) or
+      (vvc_type = "AXISTREAM_VVC" and vvc_instance_id = 1)
+    then
+      return true;
+    else
+      return false;
+    end if;
+  end;
+
+  function uart_transmit_queue_empty(constant vvc_idx : in integer) return integer is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;
   end function;
 
-  function uart_transmit_queue_get return integer is
+  function uart_transmit_queue_get(constant vvc_idx : in integer) return integer is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;
   end function;
 
   procedure uart_receive_queue_put(
-    constant byte : in integer
+    constant vvc_idx : in integer;
+    constant byte    : in integer
     ) is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;
   end procedure;
 
-  function axis_transmit_queue_empty return integer is
+  function axis_transmit_queue_empty(constant vvc_idx : in integer) return integer is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;
   end function;
 
-  function axis_transmit_queue_get return integer is
+  function axis_transmit_queue_get(constant vvc_idx : in integer) return integer is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;
   end function;
 
   procedure axis_receive_queue_put(
-    constant byte : in integer
+    constant vvc_idx : in integer;
+    constant byte    : in integer
     ) is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;

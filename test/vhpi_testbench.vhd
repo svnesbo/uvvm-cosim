@@ -79,7 +79,7 @@ begin
   axistream_if_receive.tlast   <= axistream_if_transmit.tlast;
   axistream_if_transmit.tready <= axistream_if_receive.tready;
 
-  inst_uvvm_cosim_sched: entity work.uvvm_cosim_sched
+  inst_uvvm_cosim: entity work.uvvm_cosim
     generic map (
       GC_SIM_RUN_CTRL_EN => true)
     port map (
