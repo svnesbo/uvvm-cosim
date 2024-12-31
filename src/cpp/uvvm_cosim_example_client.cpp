@@ -30,6 +30,16 @@ public:
   {
     return CallMethod<std::vector<uint8_t>>(1, "UartReceive", {length, all_or_nothing});
   }
+
+  bool AxistreamTransmit(std::vector<uint8_t> data)
+  {
+    return CallMethod<bool>(1, "AxistreamTransmit", {data});
+  }
+
+  std::vector<uint8_t> AxistreamReceive(unsigned int length, bool all_or_nothing)
+  {
+    return CallMethod<std::vector<uint8_t>>(1, "AxistreamReceive", {length, all_or_nothing});
+  }
 };
 
 
@@ -61,35 +71,72 @@ int main(int argc, char** argv)
 
   std::this_thread::sleep_for(0.5s);
 
-  std::cout << "Transmit some data..." << std::endl;
+  std::cout << "AXI-Stream: Transmit some data..." << std::endl;
+
+  client.AxistreamTransmit({0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
+  client.AxistreamTransmit({0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C});
+  client.AxistreamTransmit({0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12});
+
+  // Assume data has been transmitted/received after 1.0 seconds
+  std::this_thread::sleep_for(1.0s);
+
+  std::cout << "AXI-Stream: Request to receive 6 bytes..." << std::endl;
+  {
+    auto data = client.AxistreamReceive(6, false);
+    std::cout << "AXI-Stream: Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+  std::cout << "AXI-Stream: Request to receive 12 bytes..." << std::endl;
+  {
+    auto data = client.AxistreamReceive(12, false);
+    std::cout << "AXI-Stream: Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+  std::cout << "AXI-Stream: Request to receive 10 bytes..." << std::endl;
+  {
+    auto data = client.AxistreamReceive(10, false);
+    std::cout << "AXI-Stream: Got " << data.size() << " bytes." << std::endl;
+    if (!data.empty()) {
+      print_received_data(data);
+    }
+  }
+
+
+  std::cout << "UART: Transmit some data..." << std::endl;
 
   client.UartTransmit({0xCA, 0xFE, 0xAA, 0x12, 0x34, 0x55});
 
   // Assume data has been transmitted/received after 1.0 seconds
   std::this_thread::sleep_for(1.0s);
 
-  std::cout << "Request to receive 5 bytes..." << std::endl;
+  std::cout << "UART: Request to receive 5 bytes..." << std::endl;
   {
     auto data = client.UartReceive(5, false);
-    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    std::cout << "UART: Got " << data.size() << " bytes." << std::endl;
     if (!data.empty()) {
       print_received_data(data);
     }
   }
 
-  std::cout << "Request to receive 5 bytes (more than available)..." << std::endl;
+  std::cout << "UART: Request to receive 5 bytes (more than available)..." << std::endl;
   {
     auto data = client.UartReceive(5, true);
-    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    std::cout << "UART: Got " << data.size() << " bytes." << std::endl;
     if (!data.empty()) {
       print_received_data(data);
     }
   }
 
-  std::cout << "Request to receive 5 bytes or whatever is available..." << std::endl;
+  std::cout << "UART: Request to receive 5 bytes or whatever is available..." << std::endl;
   {
     auto data = client.UartReceive(5, false);
-    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    std::cout << "UART: Got " << data.size() << " bytes." << std::endl;
     if (!data.empty()) {
       print_received_data(data);
     }
@@ -102,10 +149,10 @@ int main(int argc, char** argv)
   // Assume data has been transmitted/received after 1.0 seconds
   std::this_thread::sleep_for(1.0s);
 
-  std::cout << "Request to receive 12 bytes or whatever is available..." << std::endl;
+  std::cout << "UART: Request to receive 12 bytes or whatever is available..." << std::endl;
   {
     auto data = client.UartReceive(12, false);
-    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    std::cout << "UART: Got " << data.size() << " bytes." << std::endl;
     if (!data.empty()) {
       print_received_data(data);
     }
@@ -118,10 +165,10 @@ int main(int argc, char** argv)
   // Assume data has been transmitted/received after 1.0 seconds
   std::this_thread::sleep_for(1.0s);
 
-  std::cout << "Request to receive 12 bytes or whatever is available..." << std::endl;
+  std::cout << "UART: Request to receive 12 bytes or whatever is available..." << std::endl;
   {
     auto data = client.UartReceive(12, false);
-    std::cout << "Got " << data.size() << " bytes." << std::endl;
+    std::cout << "UART: Got " << data.size() << " bytes." << std::endl;
     if (!data.empty()) {
       print_received_data(data);
     }

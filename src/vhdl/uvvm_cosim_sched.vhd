@@ -11,6 +11,9 @@ use uvvm_vvc_framework.ti_vvc_framework_support_pkg.all;
 library bitvis_vip_uart;
 context bitvis_vip_uart.vvc_context;
 
+library bitvis_vip_axistream;
+context bitvis_vip_axistream.vvc_context;
+
 library work;
 use work.uvvm_cosim_priv_pkg.all;
 
@@ -90,7 +93,7 @@ begin
   p_monitor : process
     -- Hard-coded alias for Rx channel on UART VVC index 1
     alias vvc_transaction_info_trigger : std_logic is global_uart_vvc_transaction_trigger(RX, 1);
-    alias vvc_transaction_info         : t_transaction_group is shared_uart_vvc_transaction_info(RX, 1);
+    alias vvc_transaction_info         : bitvis_vip_uart.transaction_pkg.t_transaction_group is shared_uart_vvc_transaction_info(RX, 1);
     variable v_cmd_idx                 : integer;
     variable v_result_data             : bitvis_vip_uart.vvc_cmd_pkg.t_vvc_result;
   begin
@@ -170,5 +173,90 @@ begin
     end loop;
 
   end process p_monitor;
+
+
+  p_sched_axistream : process
+    variable data : std_logic_vector(7 downto 0);
+  begin
+
+    wait until rising_edge(clk);
+
+    -- Schedule VVC commands
+    while axis_transmit_queue_empty = 0 loop
+      data := std_logic_vector(to_unsigned(axis_transmit_queue_get, data'length));
+
+      log(ID_SEQUENCER, "Got axistream transmit byte: " & to_string(data, HEX), C_SCOPE);
+
+      axistream_transmit(AXISTREAM_VVCT, 0, data, "Transmit from uvvm_cosim_sched");
+
+      if axis_transmit_queue_empty = 1 then
+        log(ID_SEQUENCER, "AXISTREAM transmit queue now empty", C_SCOPE);
+      end if;
+
+    end loop;
+
+  end process p_sched_axistream;
+
+
+  -- This process monitors AXI-Stream VVC by repeatedly calling axistream_receive(),
+  -- retrieving the data and putting it in a buffer for cosim using a foreign VHPI procedure.
+  p_monitor_axistream : process
+    -- Hard-coded alias for AXI-Stream VVC index 1 (used for receive)
+    alias vvc_transaction_info_trigger : std_logic is global_axistream_vvc_transaction_trigger(1);
+    alias vvc_transaction_info         : bitvis_vip_axistream.transaction_pkg.t_transaction_group is shared_axistream_vvc_transaction_info(1);
+    variable v_cmd_idx                 : integer;
+    variable v_result_data             : bitvis_vip_axistream.vvc_cmd_pkg.t_vvc_result;
+
+  begin
+
+    wait until init_done = '1';
+
+    -- Wait for first clock edge before starting
+    -- BFM is not configured before that...
+    wait until rising_edge(clk);
+
+    axistream_receive(AXISTREAM_VVCT, 1, TO_BUFFER, "Receive data to cosim buffer");
+
+    loop
+
+      v_cmd_idx := get_last_received_cmd_idx(AXISTREAM_VVCT, 1, NA, C_SCOPE);
+
+      wait until rising_edge(vvc_transaction_info_trigger);
+
+      if vvc_transaction_info.bt.transaction_status = COMPLETED then
+
+        fetch_result(AXISTREAM_VVCT, 1, v_cmd_idx, v_result_data, "Fetch received data on AXISTREAM VVC 1.", TB_ERROR, C_SCOPE);
+
+        if v_result_data.data_length = 0 then
+          --log(ID_SEQUENCER, "AXISTREAM VVC 1 transaction timed out", C_SCOPE);
+          null;
+        else
+          log(ID_SEQUENCER, "AXISTREAM VVC 1 transaction completed. Data: " & to_string(v_result_data.data_array(0 to v_result_data.data_length-1), HEX), C_SCOPE);
+
+          for byte_num in 0 to v_result_data.data_length-1 loop
+            axis_receive_queue_put(to_integer(unsigned(v_result_data.data_array(byte_num))));
+          end loop;
+
+        end if;
+
+        -- Start new receive transaction
+        axistream_receive(AXISTREAM_VVCT, 1, TO_BUFFER, "Receive data to cosim buffer");
+
+      elsif vvc_transaction_info.bt.transaction_status = INACTIVE then
+        -- Transaction is inactive - start a new one
+        axistream_receive(AXISTREAM_VVCT, 1, TO_BUFFER, "Receive data to cosim buffer");
+
+      elsif vvc_transaction_info.bt.transaction_status = IN_PROGRESS then
+        -- Transaction is in progress - don't do anything
+        null;
+
+      else
+        -- Other transaction statuses shouldn't be relevant for the axistream VVC
+        alert(TB_ERROR, "Got unexpected transaction status " & to_string(vvc_transaction_info.bt.transaction_status), C_SCOPE);
+      end if;
+
+    end loop;
+
+  end process p_monitor_axistream;
 
 end architecture func;

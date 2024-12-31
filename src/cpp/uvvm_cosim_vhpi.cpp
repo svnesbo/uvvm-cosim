@@ -24,6 +24,11 @@ extern "C" {
 shared_deque<uint8_t> uart_transmit_queue;
 shared_deque<uint8_t> uart_receive_queue;
 
+// AXI-Stream transmit and receive queues
+// Shared between server and VHPI/VHDL
+shared_deque<uint8_t> axis_transmit_queue;
+shared_deque<uint8_t> axis_receive_queue;
+
 // List of VVCs in the simulation
 shared_vector<VVCInfo> vvc_list;
 
@@ -31,8 +36,12 @@ shared_vector<VVCInfo> vvc_list;
 // SERVER FUNCTIONS - UART
 // ----------------------------------------------------------------------------
 
-
-UVVMCosimServer cosimServerMethods(uart_transmit_queue, uart_receive_queue, vvc_list); // Todo: rename this class?
+// Todo: rename this class?
+UVVMCosimServer cosimServerMethods(uart_transmit_queue,
+				   uart_receive_queue,
+				   axis_transmit_queue,
+				   axis_receive_queue,
+				   vvc_list);
 jsonrpccxx::JsonRpc2Server rpcServer;
 CppHttpLibServerConnector* httpServer = NULL;
 
@@ -42,6 +51,8 @@ void start_rpc_server(void)
 
   rpcServer.Add("UartTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::UartTransmit, cosimServerMethods), {"data"});
   rpcServer.Add("UartReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::UartReceive, cosimServerMethods), {"length", "all_or_nothing"});
+  rpcServer.Add("AxistreamTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::AxistreamTransmit, cosimServerMethods), {"data"});
+  rpcServer.Add("AxistreamReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::AxistreamReceive, cosimServerMethods), {"length", "all_or_nothing"});
   rpcServer.Add("GetVVCInfo", jsonrpccxx::GetHandle(&UVVMCosimServer::GetVVCInfo, cosimServerMethods), {});
 
   httpServer = new CppHttpLibServerConnector(rpcServer, 8484);
@@ -117,6 +128,55 @@ void uart_receive_queue_put(const vhpiCbDataT* p_cb_data)
   uart_receive_queue([&](auto &q) { q.push_back(byte); });
 }
 
+//int axis_transmit_queue_empty(void)
+void axis_transmit_queue_empty(const vhpiCbDataT* p_cb_data)
+{
+  bool empty = axis_transmit_queue([](auto &q) { return q.empty(); });
+
+  // Todo: Is there a more appropriate format for a boolean than vhpiIntVal?
+  vhpiValueT ret_val = {
+    .format = vhpiIntVal,
+    .value = { .intg = (empty ? 1 : 0) }
+  };
+  vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
+}
+
+//uint8_t axis_transmit_queue_get(void)
+void axis_transmit_queue_get(const vhpiCbDataT* p_cb_data)
+{
+  uint8_t byte = 0;
+  axis_transmit_queue([&](auto &q) {
+			if (q.empty()) {
+			  vhpi_assert(vhpiError,
+				     "axis_transmit_queue_get called on empty queue");
+			}
+			byte = q.front(); q.pop_front();
+		      });
+
+  // Todo: Is there a more appropriate format for a byte than vhpiIntVal?
+  vhpiValueT ret_val = {
+    .format = vhpiIntVal,
+    .value = { .intg = byte }
+  };
+  vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
+}
+
+//void axis_receive_queue_put(uint8_t byte)
+void axis_receive_queue_put(const vhpiCbDataT* p_cb_data)
+{
+  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
+  vhpiValueT val_param0 = {.format = vhpiIntVal };
+
+  if (vhpi_get_value(h_param0, &val_param0) != 0) {
+    vhpi_printf("Failed to get param 0");
+  }
+
+  // Todo: Is there a more appropriate parameter format for a byte than vhpiIntVal?
+  uint8_t byte = val_param0.value.intg;
+
+  axis_receive_queue([&](auto &q) { q.push_back(byte); });
+}
+
 
 void uvvm_cosim_vhpi_start_sim(const vhpiCbDataT* p_cb_data)
 {
@@ -175,6 +235,11 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
 	     // Note: vhpiCharT is defined as unsigned char
 	     //       std::string doesn't have constructor for uchar
 	   });
+
+  // Todo:
+  // Mark VVC list as done?
+  // It doesn't make sense to call this function more than once,
+  // then we'd have duplicate entries the way it's implemented now.
 }
 
 
@@ -272,6 +337,27 @@ void startup_1(void)
   h = vhpi_register_foreignf(&foreignData);
   check_foreignf_registration(h, uart_receive_queue_put_name, vhpiFuncF);
 
+  static char axis_transmit_queue_empty_name[] = "axis_transmit_queue_empty";
+  foreignData.kind=vhpiFuncF;
+  foreignData.modelName=axis_transmit_queue_empty_name;
+  foreignData.execf=axis_transmit_queue_empty;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, axis_transmit_queue_empty_name, vhpiFuncF);
+
+  static char axis_transmit_queue_get_name[] = "axis_transmit_queue_get";
+  foreignData.kind=vhpiFuncF;
+  foreignData.modelName=axis_transmit_queue_get_name;
+  foreignData.execf=axis_transmit_queue_get;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, axis_transmit_queue_get_name, vhpiFuncF);
+
+  static char axis_receive_queue_put_name[] = "axis_receive_queue_put";
+  foreignData.kind=vhpiProcF;
+  foreignData.modelName=axis_receive_queue_put_name;
+  foreignData.execf=axis_receive_queue_put;
+  h = vhpi_register_foreignf(&foreignData);
+  check_foreignf_registration(h, axis_receive_queue_put_name, vhpiFuncF);
+
   vhpi_printf("Registered all foreign functions/procedures");
 }
 
@@ -291,10 +377,6 @@ void end_of_sim_cb(const vhpiCbDataT * cb_data) {
 
   vhpi_get_time(&t, &cycles);
   vhpi_printf("End of simulation (after %ld cycles and %ld ns).", cycles, convert_time_to_ns(&t));
-
-  using namespace std::chrono_literals;
-  vhpi_printf("Wait for a while so we can test client...");
-  std::this_thread::sleep_for(5.0s);
 
   stop_rpc_server();
 }

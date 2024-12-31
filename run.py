@@ -23,8 +23,8 @@ def init(hr):
     hr.add_files("thirdparty/uvvm/bitvis_vip_scoreboard/src/*.vhd", "bitvis_vip_scoreboard")
 
     # AXI-Stream VIP
-    #hr.add_files("thirdparty/uvvm/bitvis_vip_axistream/src/*.vhd",                "bitvis_vip_axistream")
-    #hr.add_files("thirdparty/uvvm/uvvm_vvc_framework/src_target_dependent/*.vhd", "bitvis_vip_axistream")
+    hr.add_files("thirdparty/uvvm/bitvis_vip_axistream/src/*.vhd",                "bitvis_vip_axistream")
+    hr.add_files("thirdparty/uvvm/uvvm_vvc_framework/src_target_dependent/*.vhd", "bitvis_vip_axistream")
 
     # UART VIP
     hr.add_files("thirdparty/uvvm/bitvis_vip_uart/src/*.vhd",                "bitvis_vip_uart")
@@ -48,6 +48,15 @@ def main():
 
     if hr.settings.get_simulator_name() == "NVC":
         print("Starting NVC sim")
+
+        # Override heap space parameters to NVC
+        # These are by default set to -H64m and -M64m in HDLregression,
+        # which is too small.
+        global_opts = [opt for opt in hr.settings.get_global_options() if "-H" not in opt and "-M" not in opt]
+        global_opts.append("-H1g")
+        global_opts.append("-M1g")
+        hr.settings.set_global_options(global_opts)
+
         # Todo: Add build directoy arg to run.py instead of hardcoding it to "build"
         return hr.start(sim_options=[f"--load={project_path / "build" / "libuvvm_cosim_vhpi.so"}"])
     else:
