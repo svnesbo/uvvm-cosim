@@ -310,33 +310,6 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
   // then we'd have duplicate entries the way it's implemented now.
 }
 
-
-//void func(int a, int b)
-void func(const vhpiCbDataT* p_cb_data)
-{
-  vhpi_printf("func called");
-
-  vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
-  vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
-  vhpiValueT val_param0 = {.format = vhpiIntVal };
-  vhpiValueT val_param1 = {.format = vhpiIntVal };
-
-  if (vhpi_get_value(h_param0, &val_param0) != 0) {
-    vhpi_printf("Failed to get param 0");
-  }
-  if (vhpi_get_value(h_param1, &val_param1) != 0) {
-    vhpi_printf("Failed to get param 1");
-  }
-
-  vhpi_printf("Called with params: %d, %d.", val_param0.value.intg, val_param1.value.intg);
-
-  vhpiValueT ret_val = {
-    .format = vhpiIntVal,
-    .value = { .intg = val_param0.value.intg * val_param1.value.intg }
-  };
-  vhpi_put_value(p_cb_data->obj, &ret_val, vhpiDeposit);
-}
-
 void check_foreignf_registration(const vhpiHandleT& h, const char* func_name, vhpiForeignKindT kind)
 {
   vhpiForeignDataT check;
@@ -359,16 +332,13 @@ void startup_1(void)
   vhpi_printf("startup_1 called");
 
   static char vhpi_lib_name[] = "vhpi_lib";
-  static char vhpi_func_name[] = "vhpi_func";
 
   vhpiForeignDataT foreignData = {
-    // vhpi_lib: VHDL library name
-    // func_dec: VHDL function name
-    vhpiFuncF, vhpi_lib_name, vhpi_func_name, NULL, func
+    .libraryName = vhpi_lib_name,
+    .elabf       = NULL
   };
 
-  vhpiHandleT h = vhpi_register_foreignf(&foreignData);
-  check_foreignf_registration(h, vhpi_func_name, vhpiFuncF);
+  vhpiHandleT h;
 
   static char uvvm_cosim_vhpi_report_vvc_info_name[] = "uvvm_cosim_vhpi_report_vvc_info";
   foreignData.kind=vhpiProcF;

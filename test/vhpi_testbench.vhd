@@ -22,19 +22,7 @@ end entity tb;
 
 architecture sim of tb is
 
-  function vhpi_func (a : integer;
-                      b : integer)
-    return integer is
-  begin
-    report "Ooops" severity failure;
-  end function;
-
-  attribute foreign of vhpi_func : function is "VHPI vhpi_lib vhpi_func";
-
   signal clk : std_logic;
-  signal a   : integer := 5;
-  signal b   : integer := 6;
-  signal y   : integer;
 
   signal uart0_rx : std_logic;
   signal uart0_tx : std_logic := '1';
@@ -214,14 +202,6 @@ begin
     start_clock(CLOCK_GENERATOR_VVCT, 0, "Start clock generator");
 
     report "Starting test";
-
-    wait for 100 ns;
-
-    y <= vhpi_func(a, b);
-
-    wait for 50 ns;
-
-    report "Got y = " & integer'image(y) & " from foreign vhpi_func()";
 
     wait for 1000 ms;
 
