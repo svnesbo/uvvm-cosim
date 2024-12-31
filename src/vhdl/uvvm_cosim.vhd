@@ -47,7 +47,7 @@ architecture func of uvvm_cosim is
       return false;
     end if;
   end function strcmp;
-  
+
 begin
 
   p_uvvm_cosim_init : process
@@ -116,7 +116,7 @@ begin
         tx_vvc_idx_in_use => uart_tx_vvc_indexes_in_use(vvc_idx),
         rx_vvc_idx_in_use => uart_rx_vvc_indexes_in_use(vvc_idx),
         init_done         => init_done);
-    
+
   end generate g_uart_vvc_ctrl;
 
   g_axis_vvc_ctrl: for vvc_idx in 0 to C_AXISTREAM_VVC_MAX_INSTANCE_NUM-1 generate
@@ -128,7 +128,7 @@ begin
         clk            => clk,
         vvc_idx_in_use => axis_vvc_indexes_in_use(vvc_idx),
         init_done      => init_done);
-    
+
   end generate g_axis_vvc_ctrl;
 
 end architecture func;

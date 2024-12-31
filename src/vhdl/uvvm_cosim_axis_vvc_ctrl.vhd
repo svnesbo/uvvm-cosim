@@ -39,7 +39,7 @@ begin
   -- Instead, both transmit and receive processes are active for any axistream
   -- VVC. Which is not a problem, the user will just get an alert/error from
   -- the VVC if it tries to issue transmit to a receiver instance and vice versa.
-  
+
   p_transmit : process
     variable v_data : std_logic_vector(7 downto 0);
   begin
@@ -54,9 +54,9 @@ begin
 
     log(ID_SEQUENCER, "Cosim for AXISTREAM VVC " & to_string(GC_VVC_IDX) & " ENABLED.", C_SCOPE);
 
-    loop 
+    loop
       wait until rising_edge(clk);
-    
+
       -- Schedule VVC transmit commands
       while axis_transmit_queue_empty(GC_VVC_IDX) = 0 loop
         v_data := std_logic_vector(to_unsigned(axis_transmit_queue_get(GC_VVC_IDX), v_data'length));
