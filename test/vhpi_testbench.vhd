@@ -172,16 +172,13 @@ begin
     shared_uart_vvc_config(RX, 1).bfm_config := v_uart_bfm_config;
     shared_uart_vvc_config(TX, 1).bfm_config := v_uart_bfm_config;
 
-    -- Note: Default is timeout = 0 (never time out)
+    -- Infinite timeout (zero) is the default - but set explicitly here anyway
+    -- The cosim monitor will NOT work reliably with finite timeout
+    -- because of how timeout is implemented in the BFM.
     shared_uart_vvc_config(RX, 1).bfm_config.timeout          := 0 ns;
-    shared_uart_vvc_config(RX, 1).bfm_config.timeout_severity := NO_ALERT;
 
-    -- Here we test with an actual timeout..
-    -- Note:
-    -- This does NOT work reliably because of how timeout is implemented in the BFM
-    -- Use infinite timeout instead.
-    --shared_uart_vvc_config(RX, 1).bfm_config.timeout          := 1000 us;
-    --shared_uart_vvc_config(RX, 1).bfm_config.timeout_severity := NOTE;
+    -- Note: Unnecessary to set NO_ALERT since we require infinite timeout
+    --shared_uart_vvc_config(RX, 1).bfm_config.timeout_severity := NO_ALERT;
 
     -----------------------------------------------------------------------------
     -- AXI-Stream VVC config

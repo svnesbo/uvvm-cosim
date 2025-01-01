@@ -71,6 +71,7 @@ begin
   p_receive : process
     alias vvc_transaction_info_trigger : std_logic is global_uart_vvc_transaction_trigger(RX, GC_VVC_IDX);
     alias vvc_transaction_info         : t_transaction_group is shared_uart_vvc_transaction_info(RX, GC_VVC_IDX);
+    alias bfm_config                   : t_uart_bfm_config is shared_uart_vvc_config(RX, GC_VVC_IDX).bfm_config;
     variable v_cmd_idx                 : integer;
     variable v_result_data             : bitvis_vip_uart.vvc_cmd_pkg.t_vvc_result;
 
@@ -84,6 +85,13 @@ begin
         return false;
       end if;
     end function listen_enable;
+
+    procedure check_bfm_config (void : t_void) is
+    begin
+      if bfm_config.timeout > 0 ns then
+        alert(TB_ERROR, "UART RX VVC " & to_string(GC_VVC_IDX) & ": timeout = " & to_string(bfm_config.timeout) & ", must be zero (infinite) for cosim to work properly", C_SCOPE);
+      end if;
+    end procedure check_bfm_config;
 
   begin
 
@@ -107,6 +115,9 @@ begin
 
       while listen_enable(void) loop
 
+        -- Check BFM config when listen is enabled
+        check_bfm_config(VOID);
+
         if v_start_new_transaction then
           v_start_new_transaction := false;
           uart_receive(UART_VVCT, GC_VVC_IDX, RX, TO_BUFFER, "Receive data to cosim buffer");
@@ -127,7 +138,7 @@ begin
             --log(ID_SEQUENCER, "UART RX VVC " & to_string(GC_VVC_IDX) & " transaction timed out", C_SCOPE);
             null;
           else
-            log(ID_SEQUENCER, "UART RX VVC " & to_string(GC_VVC_IDX) & " transaction completed. Data: " & to_string(v_result_data, HEX), C_SCOPE);
+            log(ID_SEQUENCER, "UART RX VVC " & to_string(GC_VVC_IDX) & ": Transaction completed. Data: " & to_string(v_result_data, HEX), C_SCOPE);
 
             uart_receive_queue_put(GC_VVC_IDX, to_integer(unsigned(v_result_data)));
           end if;
@@ -144,7 +155,7 @@ begin
 
         else
           -- Other transaction statuses shouldn't be relevant for the UART VVC
-          alert(TB_ERROR, "Got unexpected transaction status " & to_string(vvc_transaction_info.bt.transaction_status), C_SCOPE);
+          alert(TB_ERROR, "UART RX VVC " & to_string(GC_VVC_IDX) & ": Got unexpected transaction status " & to_string(vvc_transaction_info.bt.transaction_status), C_SCOPE);
         end if;
 
       end loop;

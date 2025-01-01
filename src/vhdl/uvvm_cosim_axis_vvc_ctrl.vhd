@@ -80,6 +80,7 @@ begin
   p_receive : process
     alias vvc_transaction_info_trigger : std_logic is global_axistream_vvc_transaction_trigger(GC_VVC_IDX);
     alias vvc_transaction_info         : t_transaction_group is shared_axistream_vvc_transaction_info(GC_VVC_IDX);
+    alias bfm_config                   : t_axistream_bfm_config is shared_axistream_vvc_config(GC_VVC_IDX).bfm_config;
     variable v_cmd_idx                 : integer;
     variable v_result_data             : bitvis_vip_axistream.vvc_cmd_pkg.t_vvc_result;
 
@@ -93,6 +94,17 @@ begin
         return false;
       end if;
     end function listen_enable;
+
+    procedure check_bfm_config (void : t_void) is
+    begin
+      if bfm_config.max_wait_cycles_severity /= NO_ALERT then
+        alert(TB_ERROR, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & ": Max wait cycles severity (timeout) should be set to NO_ALERT for cosim", C_SCOPE);
+      end if;
+
+        if bfm_config.check_packet_length then
+          alert(TB_ERROR, "AXISTREAM VVC = " & to_string(GC_VVC_IDX) & ": Packet length (tlast) is not supported for cosim yet", C_SCOPE);
+        end if;
+    end procedure check_bfm_config;
 
   begin
 
@@ -114,6 +126,9 @@ begin
 
       while listen_enable(void) loop
 
+        -- Check BFM config when listen is enabled
+        check_bfm_config(VOID);
+
         if v_start_new_transaction then
           v_start_new_transaction := false;
           axistream_receive(AXISTREAM_VVCT, GC_VVC_IDX, TO_BUFFER, "Receive data to cosim buffer");
@@ -131,7 +146,7 @@ begin
             --log(ID_SEQUENCER, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & " transaction timed out", C_SCOPE);
             null;
           else
-            log(ID_SEQUENCER, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & " transaction completed. Data: " & to_string(v_result_data.data_array(0 to v_result_data.data_length-1), HEX), C_SCOPE);
+            log(ID_SEQUENCER, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & ": Transaction completed. Data: " & to_string(v_result_data.data_array(0 to v_result_data.data_length-1), HEX), C_SCOPE);
 
             for byte_num in 0 to v_result_data.data_length-1 loop
               axis_receive_queue_put(GC_VVC_IDX, to_integer(unsigned(v_result_data.data_array(byte_num))));
@@ -151,7 +166,7 @@ begin
 
         else
           -- Other transaction statuses shouldn't be relevant for the axistream VVC
-          alert(TB_ERROR, "Got unexpected transaction status " & to_string(vvc_transaction_info.bt.transaction_status), C_SCOPE);
+          alert(TB_ERROR, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & ": Got unexpected transaction status " & to_string(vvc_transaction_info.bt.transaction_status), C_SCOPE);
         end if;
 
       end loop;
