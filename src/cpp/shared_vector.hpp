@@ -1,9 +1,5 @@
 #pragma once
-#include <chrono>
-#include <iostream>
 #include <mutex>
-#include <thread>
-#include <utility>
 #include <vector>
 
 // Based on this StackOverflow answer to the question

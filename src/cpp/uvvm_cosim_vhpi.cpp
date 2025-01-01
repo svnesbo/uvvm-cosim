@@ -1,23 +1,19 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// #include <stdint.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
 #include <iostream>
 #include <deque>
+#include <string>
 #include <thread>
 #include <vector>
 #include <vhpi_user.h>
-#include "uvvm_cosim_server.h"
-#include "uvvm_cosim_types.h"
-#include "shared_deque.h"
-#include "shared_vector.h"
+#include "uvvm_cosim_server.hpp"
+#include "uvvm_cosim_types.hpp"
+#include "shared_deque.hpp"
+#include "shared_vector.hpp"
 
-#include <cpphttplibconnector.hpp>
-
-#ifdef __cplusplus
 extern "C" {
-#endif
-
 
 // UART transmit and receive queues
 // Shared between server and VHPI/VHDL
@@ -37,35 +33,22 @@ shared_vector<VVCInfo> vvc_list;
 // ----------------------------------------------------------------------------
 
 // Todo: rename this class?
-UVVMCosimServer cosimServerMethods(uart_transmit_queue,
-				   uart_receive_queue,
-				   axis_transmit_queue,
-				   axis_receive_queue,
-				   vvc_list);
-jsonrpccxx::JsonRpc2Server rpcServer;
+UvvmCosimServer cosim_server(uart_transmit_queue, uart_receive_queue,
+                             axis_transmit_queue, axis_receive_queue, vvc_list);
+
 CppHttpLibServerConnector* httpServer = NULL;
 
 void start_rpc_server(void)
 {
-  std::cout << "Starting JSON RPC server" << std::endl;
-
-  rpcServer.Add("UartTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::UartTransmit, cosimServerMethods), {"data"});
-  rpcServer.Add("UartReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::UartReceive, cosimServerMethods), {"length", "all_or_nothing"});
-  rpcServer.Add("AxistreamTransmit", jsonrpccxx::GetHandle(&UVVMCosimServer::AxistreamTransmit, cosimServerMethods), {"data"});
-  rpcServer.Add("AxistreamReceive", jsonrpccxx::GetHandle(&UVVMCosimServer::AxistreamReceive, cosimServerMethods), {"length", "all_or_nothing"});
-  rpcServer.Add("GetVVCInfo", jsonrpccxx::GetHandle(&UVVMCosimServer::GetVVCInfo, cosimServerMethods), {});
-
-  httpServer = new CppHttpLibServerConnector(rpcServer, 8484);
-
-  std::cout << "Start listening on HTTP server" << std::endl;
-  httpServer->StartListening();
+  std::cout << "Start JSON RPC server" << std::endl;
+  cosim_server.StartListening();
 }
 
 void stop_rpc_server(void)
 {
-  std::cout << "Stop listening on HTTP server" << std::endl;
-  httpServer->StopListening();
-  std::cout << "HTTP server stopped" << std::endl;
+  std::cout << "Stop JSON RPC server" << std::endl;
+  cosim_server.StopListening();
+  std::cout << "JSON RPC server stopped" << std::endl;
 }
 
 
@@ -449,8 +432,4 @@ void (*vhpi_startup_routines[])() = {
   startup_2,
   NULL
 };
-
-
-#ifdef __cplusplus
 }
-#endif

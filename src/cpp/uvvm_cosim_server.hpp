@@ -2,11 +2,13 @@
 #include <cstdint>
 #include <iostream>
 #include <vector>
-#include "shared_deque.h"
-#include "shared_vector.h"
-#include "uvvm_cosim_types.h"
+#include <jsonrpccxx/server.hpp>
+#include <cpphttplibconnector.hpp>
+#include "shared_deque.hpp"
+#include "shared_vector.hpp"
+#include "uvvm_cosim_types.hpp"
 
-class UVVMCosimServer {
+class UvvmCosimServer {
 private:
   // Todo: Use deque instead
   shared_deque<uint8_t> &uart_transmit_queue;
@@ -14,9 +16,13 @@ private:
   shared_deque<uint8_t> &axis_transmit_queue;
   shared_deque<uint8_t> &axis_receive_queue;
   shared_vector<VVCInfo> &vvc_list;
-  
+
+  jsonrpccxx::JsonRpc2Server jsonRpcServer;
+
+  CppHttpLibServerConnector *httpServer = NULL;
+
 public:
-  UVVMCosimServer(shared_deque<uint8_t> &uart_transmit_queue,
+  UvvmCosimServer(shared_deque<uint8_t> &uart_transmit_queue,
 		  shared_deque<uint8_t> &uart_receive_queue,
 		  shared_deque<uint8_t> &axis_transmit_queue,
 		  shared_deque<uint8_t> &axis_receive_queue,
@@ -27,7 +33,52 @@ public:
     , axis_receive_queue(axis_receive_queue)
     , vvc_list(vvc_list)
   {
+    using namespace jsonrpccxx;
+
+    // Add JSON-RPC procedures
+
+    jsonRpcServer.Add("UartTransmit",
+                      GetHandle(&UvvmCosimServer::UartTransmit, *this),
+                      {"data"});
+
+    jsonRpcServer.Add("UartReceive",
+                      GetHandle(&UvvmCosimServer::UartReceive, *this),
+                      {"length", "all_or_nothing"});
+
+    jsonRpcServer.Add("AxistreamTransmit",
+                      GetHandle(&UvvmCosimServer::AxistreamTransmit, *this),
+                      {"data"});
+
+    jsonRpcServer.Add("AxistreamReceive",
+                      GetHandle(&UvvmCosimServer::AxistreamReceive, *this),
+                      {"length", "all_or_nothing"});
+
+    jsonRpcServer.Add("GetVVCInfo",
+                      GetHandle(&UvvmCosimServer::GetVVCInfo, *this), {});
+
+    httpServer = new CppHttpLibServerConnector(jsonRpcServer, 8484);
   }
+
+  ~UvvmCosimServer()
+  {
+    httpServer->StopListening();
+    delete httpServer;
+  }
+
+  void StartListening()
+  {
+    httpServer->StartListening();
+  }
+
+  void StopListening()
+  {
+    httpServer->StopListening();
+  }
+
+private:
+  // --------------------------------------------------------------------------
+  // JSON-RPC remote procedures
+  // --------------------------------------------------------------------------
 
   std::vector<VVCInfo> GetVVCInfo() {
     return vvc_list([](auto v){return v;});

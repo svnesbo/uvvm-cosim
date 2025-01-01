@@ -5,7 +5,7 @@
 #include <jsonrpccxx/client.hpp>
 #include <jsonrpccxx/iclientconnector.hpp>
 #include <cpphttplibconnector.hpp>
-#include "uvvm_cosim_types.h"
+#include "uvvm_cosim_types.hpp"
 
 
 // Example client for UVVM cosim
