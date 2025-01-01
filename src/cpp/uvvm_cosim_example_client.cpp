@@ -11,6 +11,8 @@
 // Example client for UVVM cosim
 // Implements method for UART transmit and receive currently
 class UVVMCosimExampleClient : private jsonrpccxx::JsonRpcClient {
+  int requestId = 0;
+
 public:
   explicit UVVMCosimExampleClient(jsonrpccxx::IClientConnector &connector)
     : jsonrpccxx::JsonRpcClient(connector, jsonrpccxx::version::v2)
@@ -18,27 +20,27 @@ public:
   }
 
   std::vector<VVCInfo> GetVVCInfo() {
-    return CallMethod<std::vector<VVCInfo>>(1, "GetVVCInfo", {});
+    return CallMethod<std::vector<VVCInfo>>(requestId++, "GetVVCInfo", {});
   }
 
-  bool UartTransmit(std::vector<uint8_t> data)
+  bool UartTransmit(const std::vector<uint8_t> data)
   {
-    return CallMethod<bool>(1, "UartTransmit", {data});
+    return CallMethod<bool>(requestId++, "UartTransmit", {data});
   }
 
-  std::vector<uint8_t> UartReceive(unsigned int length, bool all_or_nothing)
+  std::vector<uint8_t> UartReceive(const unsigned int length, const bool all_or_nothing)
   {
-    return CallMethod<std::vector<uint8_t>>(1, "UartReceive", {length, all_or_nothing});
+    return CallMethod<std::vector<uint8_t>>(requestId++, "UartReceive", {length, all_or_nothing});
   }
 
-  bool AxistreamTransmit(std::vector<uint8_t> data)
+  bool AxistreamTransmit(const std::vector<uint8_t> data)
   {
-    return CallMethod<bool>(1, "AxistreamTransmit", {data});
+    return CallMethod<bool>(requestId++, "AxistreamTransmit", {data});
   }
 
-  std::vector<uint8_t> AxistreamReceive(unsigned int length, bool all_or_nothing)
+  std::vector<uint8_t> AxistreamReceive(const unsigned int length, const bool all_or_nothing)
   {
-    return CallMethod<std::vector<uint8_t>>(1, "AxistreamReceive", {length, all_or_nothing});
+    return CallMethod<std::vector<uint8_t>>(requestId++, "AxistreamReceive", {length, all_or_nothing});
   }
 };
 
