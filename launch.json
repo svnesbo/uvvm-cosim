@@ -2,16 +2,29 @@
     "version": "0.0.1",
     "configurations": [
         {
-            "name": "Debug UVVM Cosim example client",
+            "name": "Debug Cosim client (C++)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/uvvm_cosim_example_client",
             "args": ["-q"],
-            "stopAtEntry": false,
+	    "justMyCode": false,
+            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb"
-        }
+        },
+        {
+            "name": "Debug Cosim client (Python)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/python/example_client_tinyrpc-lib.py",
+            "args": ["-i"],
+	    "justMyCode": false,
+            "stopOnEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false
+        },
     ]
 }
