@@ -356,7 +356,7 @@ void startup_1(void)
   foreignData.modelName=uart_receive_queue_put_name;
   foreignData.execf=uart_receive_queue_put;
   h = vhpi_register_foreignf(&foreignData);
-  check_foreignf_registration(h, uart_receive_queue_put_name, vhpiFuncF);
+  check_foreignf_registration(h, uart_receive_queue_put_name, vhpiProcF);
 
   static char axis_transmit_queue_empty_name[] = "axis_transmit_queue_empty";
   foreignData.kind=vhpiFuncF;
@@ -377,7 +377,7 @@ void startup_1(void)
   foreignData.modelName=axis_receive_queue_put_name;
   foreignData.execf=axis_receive_queue_put;
   h = vhpi_register_foreignf(&foreignData);
-  check_foreignf_registration(h, axis_receive_queue_put_name, vhpiFuncF);
+  check_foreignf_registration(h, axis_receive_queue_put_name, vhpiProcF);
 
   vhpi_printf("Registered all foreign functions/procedures");
 }
