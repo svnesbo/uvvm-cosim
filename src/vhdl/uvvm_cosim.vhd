@@ -54,10 +54,8 @@ begin
     variable vvc_channel     : t_channel;
     variable vvc_instance_id : integer;
   begin
-    loop
-      wait for 0 ns;
-      exit when shared_uvvm_state = INIT_COMPLETED;
-    end loop;
+
+    await_uvvm_initialization(VOID);
 
     log(ID_SEQUENCER, "UVVM initialization complete!", C_SCOPE);
 
