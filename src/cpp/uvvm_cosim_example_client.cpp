@@ -19,8 +19,8 @@ public:
   {
   }
 
-  std::vector<VVCInfo> GetVVCInfo() {
-    return CallMethod<std::vector<VVCInfo>>(requestId++, "GetVVCInfo", {});
+  std::vector<VvcInstance> GetVvcList() {
+    return CallMethod<std::vector<VvcInstance>>(requestId++, "GetVvcList", {});
   }
 
   bool UartTransmit(const std::vector<uint8_t> data)
@@ -177,11 +177,17 @@ int main(int argc, char** argv)
   }
 
   std::cout << "Get info about VVCs" << std::endl;
-  auto vvc_info = client.GetVVCInfo();
+  auto vvc_list = client.GetVvcList();
 
-  for (auto& vvc : vvc_info) {
+  for (auto& vvc : vvc_list) {
     std::cout << "Type: " << vvc.vvc_type << ", ";
     std::cout << "Channel: " << vvc.vvc_channel << ", ";
     std::cout << "Instance ID: " << vvc.vvc_instance_id << std::endl;
+
+    std::cout << "Config: ";
+    for (auto& cfg : vvc.vvc_cfg) {
+      std::cout << cfg.first << "=" << cfg.second << " ";
+    }
+    std::cout << std::endl << std::endl;
   }
 }

@@ -15,7 +15,7 @@ private:
   shared_deque<uint8_t> &uart_receive_queue;
   shared_deque<uint8_t> &axis_transmit_queue;
   shared_deque<uint8_t> &axis_receive_queue;
-  shared_vector<VVCInfo> &vvc_list;
+  shared_vector<VvcInstance> &vvc_list;
 
   jsonrpccxx::JsonRpc2Server jsonRpcServer;
 
@@ -26,7 +26,7 @@ public:
 		  shared_deque<uint8_t> &uart_receive_queue,
 		  shared_deque<uint8_t> &axis_transmit_queue,
 		  shared_deque<uint8_t> &axis_receive_queue,
-		  shared_vector<VVCInfo> &vvc_list)
+		  shared_vector<VvcInstance> &vvc_list)
     : uart_transmit_queue(uart_transmit_queue)
     , uart_receive_queue(uart_receive_queue)
     , axis_transmit_queue(axis_transmit_queue)
@@ -53,8 +53,8 @@ public:
                       GetHandle(&UvvmCosimServer::AxistreamReceive, *this),
                       {"length", "all_or_nothing"});
 
-    jsonRpcServer.Add("GetVVCInfo",
-                      GetHandle(&UvvmCosimServer::GetVVCInfo, *this), {});
+    jsonRpcServer.Add("GetVvcList",
+                      GetHandle(&UvvmCosimServer::GetVvcList, *this), {});
 
     httpServer = new CppHttpLibServerConnector(jsonRpcServer, 8484);
   }
@@ -80,7 +80,7 @@ private:
   // JSON-RPC remote procedures
   // --------------------------------------------------------------------------
 
-  std::vector<VVCInfo> GetVVCInfo() {
+  std::vector<VvcInstance> GetVvcList() {
     return vvc_list([](auto v){return v;});
   }
 

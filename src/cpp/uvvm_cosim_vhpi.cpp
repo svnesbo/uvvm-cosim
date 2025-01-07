@@ -1,7 +1,4 @@
-// #include <stdint.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
+#include <exception>
 #include <iostream>
 #include <deque>
 #include <string>
@@ -26,7 +23,7 @@ shared_deque<uint8_t> axis_transmit_queue;
 shared_deque<uint8_t> axis_receive_queue;
 
 // List of VVCs in the simulation
-shared_vector<VVCInfo> vvc_list;
+shared_vector<VvcInstance> vvc_list;
 
 // ----------------------------------------------------------------------------
 // SERVER FUNCTIONS - UART
@@ -239,6 +236,62 @@ void uvvm_cosim_vhpi_start_sim(const vhpiCbDataT* p_cb_data)
   vhpi_printf("uvvm_cosim_vhpi_start_sim: Starting sim");
 }
 
+// Split a string by delimiter into substrings.
+// Unnecessary leading/trailing and extra delimiters are removed
+std::vector<std::string> split(std::string str, std::string delim)
+{
+  std::vector<std::string> substrings;
+
+  size_t next_pos;
+
+  while ((next_pos = str.find_first_not_of(delim)) != std::string::npos) {
+    str.erase(0, next_pos);
+
+    size_t delim_pos = str.find_first_of(delim);
+    substrings.push_back(str.substr(0, delim_pos));
+    str.erase(0, delim_pos);
+  }
+
+  return substrings;
+}
+
+// Search a comma-separated string for config values
+// Each config value must be a key/value pair formatted as "key=value"
+// Only integers are supported for value (use 0/1 for bool).
+// Example string:
+// "packet_based=1,enabled=0,timeout=1000"
+std::map<std::string, int> parse_vvc_cfg_str(const std::string& cfg_str)
+{
+  std::map<std::string, int> vvc_cfg;
+
+  try {
+    auto cfg_items = split(cfg_str, ",");
+
+    for (auto &cfg_item : cfg_items) {
+
+      std::cout << "cfg_item=\"" << cfg_item << "\"" << std::endl;
+
+      auto cfg_key_val = split(cfg_item, "=");
+
+      if (cfg_key_val.size() != 2) {
+        std::cerr << "Error parsing config item" << std::endl;
+        continue;
+      }
+
+      std::string cfg_key = cfg_key_val[0];
+      int cfg_val = std::stoi(cfg_key_val[1]);
+
+      vvc_cfg.emplace(cfg_key, cfg_val);
+    }
+
+  } catch (std::exception &e) {
+    std::cerr << "Exception processing config string \"" << cfg_str << "\".";
+    std::cerr << "Reason=" << e.what() << std::endl;
+  }
+
+  return vvc_cfg;
+}
+
 void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
 {
   constexpr size_t C_MAX_STR_SIZE = 256;
@@ -246,18 +299,23 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
   vhpiHandleT h_param0 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 0);
   vhpiHandleT h_param1 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 1);
   vhpiHandleT h_param2 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 2);
+  vhpiHandleT h_param3 = vhpi_handle_by_index(vhpiParamDecls, p_cb_data->obj, 3);
 
   vhpiCharT str_param0[C_MAX_STR_SIZE];
   vhpiCharT str_param1[C_MAX_STR_SIZE];
+  vhpiCharT str_param3[C_MAX_STR_SIZE];
 
   vhpiValueT val_param0 = {.format = vhpiStrVal };
   vhpiValueT val_param1 = {.format = vhpiStrVal };
   vhpiValueT val_param2 = {.format = vhpiIntVal };
+  vhpiValueT val_param3 = {.format = vhpiStrVal };
 
   val_param0.bufSize=sizeof(str_param0);
   val_param0.value.str=str_param0;
   val_param1.bufSize=sizeof(str_param1);
   val_param1.value.str=str_param1;
+  val_param3.bufSize=sizeof(str_param3);
+  val_param3.value.str=str_param3;
 
   if (vhpi_get_value(h_param0, &val_param0) != 0) {
     vhpi_printf("Failed to get param 0");
@@ -268,29 +326,31 @@ void uvvm_cosim_vhpi_report_vvc_info(const vhpiCbDataT* p_cb_data)
   if (vhpi_get_value(h_param2, &val_param2) != 0) {
     vhpi_printf("Failed to get param 2");
   }
+  if (vhpi_get_value(h_param3, &val_param3) != 0) {
+    vhpi_printf("Failed to get param 3");
+  }
 
   vhpi_printf("uvvm_cosim_vhpi_report_vvc_info: Got:");
-  vhpi_printf("Type=%s, Channel=%s, ID=%d",
+  vhpi_printf("Type=%s, Channel=%s, ID=%d, cfg=%s",
 	      val_param0.value.str,
               val_param1.value.str,
-	      val_param2.value.intg);
+	      val_param2.value.intg,
+	      val_param3.value.str);
 
-  vvc_list([&](auto &v){
-	     // Todo: I'd like to construct in place (with emplace_back)
-	     // How can I do that for struct? Does it need to have constructor maybe?
-	     v.push_back(VVCInfo{
-		 .vvc_type        = std::string(reinterpret_cast<char*>(val_param0.value.str)),
-		 .vvc_channel     = std::string(reinterpret_cast<char*>(val_param1.value.str)),
-		 .vvc_instance_id = val_param2.value.intg
-	       });
-	     // Note: vhpiCharT is defined as unsigned char
-	     //       std::string doesn't have constructor for uchar
-	   });
+  std::string cfg_str = std::string(reinterpret_cast<char*>(val_param3.value.str));
+  auto vvc_cfg = parse_vvc_cfg_str(cfg_str);
 
-  // Todo:
-  // Mark VVC list as done?
-  // It doesn't make sense to call this function more than once,
-  // then we'd have duplicate entries the way it's implemented now.
+  vvc_list([&](auto &v) {
+    // Todo: I'd like to construct in place (with emplace_back)
+    // How can I do that for struct? Does it need to have constructor maybe?
+    v.push_back(VvcInstance{
+        .vvc_type = std::string(reinterpret_cast<char *>(val_param0.value.str)),
+        .vvc_channel = std::string(reinterpret_cast<char *>(val_param1.value.str)),
+        .vvc_instance_id = val_param2.value.intg,
+        .vvc_cfg = vvc_cfg});
+    // Note: vhpiCharT is defined as unsigned char
+    //       std::string doesn't have constructor for uchar
+  });
 }
 
 void check_foreignf_registration(const vhpiHandleT& h, const char* func_name, vhpiForeignKindT kind)

@@ -11,7 +11,8 @@ package uvvm_cosim_priv_pkg is
   procedure uvvm_cosim_vhpi_report_vvc_info(
     constant vvc_type        : in string;
     constant vvc_channel     : in string;
-    constant vvc_instance_id : in integer
+    constant vvc_instance_id : in integer;
+    constant vvc_cfg         : in string
     );
 
   -- TODO: Replace and add attribute for VHPI implementation
@@ -67,7 +68,8 @@ package body uvvm_cosim_priv_pkg is
   procedure uvvm_cosim_vhpi_report_vvc_info(
     constant vvc_type        : in string;
     constant vvc_channel     : in string;
-    constant vvc_instance_id : in integer
+    constant vvc_instance_id : in integer;
+    constant vvc_cfg         : in string
     ) is
   begin
     report "Error: Should use foreign VHPI implementation" severity failure;

@@ -2,6 +2,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library std;
+use std.textio.all;
+
 library uvvm_util;
 context uvvm_util.uvvm_util_context;
 
@@ -34,7 +37,7 @@ architecture func of uvvm_cosim is
   signal uart_tx_vvc_indexes_in_use : std_logic_vector(0 to C_UART_VVC_MAX_INSTANCE_NUM-1)      := (others => '0');
   signal axis_vvc_indexes_in_use    : std_logic_vector(0 to C_AXISTREAM_VVC_MAX_INSTANCE_NUM-1) := (others => '0');
 
-  impure function strcmp (
+  function strcmp (
     constant str1 : string;
     constant str2 : string)
     return boolean is
@@ -48,11 +51,49 @@ architecture func of uvvm_cosim is
     end if;
   end function strcmp;
 
+  function bfm_cfg_to_string(
+    constant cfg : t_axistream_bfm_config)
+    return line
+  is
+    variable v_line : line := new string'("");
+  begin
+    write(v_line, string'("cosim_support=1,"));
+
+    if cfg.check_packet_length then
+      write(v_line, string'("packet_based=1,"));
+    else
+      write(v_line, string'("packet_based=0,"));
+    end if;
+    return v_line;
+  end function bfm_cfg_to_string;
+
+  function bfm_cfg_to_string(
+    constant cfg : t_uart_bfm_config)
+    return line
+  is
+    variable v_line : line := new string'("");
+  begin
+    write(v_line, string'("cosim_support=1,"));
+    return v_line;
+  end function bfm_cfg_to_string;
+
+  -- For unsupported VVCs/BFMs
+  function bfm_cfg_to_string(
+    constant void : t_void)
+    return line
+  is
+    variable v_line : line := new string'("");
+  begin
+    write(v_line, string'("cosim_support=0,"));
+    return v_line;
+  end function bfm_cfg_to_string;
+
 begin
 
   p_uvvm_cosim_init : process
     variable vvc_channel     : t_channel;
     variable vvc_instance_id : integer;
+    variable vvc_cfg         : line :=  null;
   begin
 
     await_uvvm_initialization(VOID);
@@ -73,13 +114,6 @@ begin
       vvc_channel     := shared_vvc_activity_register.priv_get_vvc_channel(idx);
       vvc_instance_id := shared_vvc_activity_register.priv_get_vvc_instance(idx);
 
-      -- Report VVC info to cosim server via VHPI
-      uvvm_cosim_vhpi_report_vvc_info(
-        shared_vvc_activity_register.priv_get_vvc_name(idx),
-        to_string(vvc_channel),
-        vvc_instance_id
-        );
-
       -- Note:
       -- Can't compare strings directly with = because that compares the full
       -- range of the string. The string returned from priv_get_vvc_name always
@@ -87,15 +121,39 @@ begin
       -- while the literal has whatever size is needed to hold the characters.
       if strcmp("UART_VVC", shared_vvc_activity_register.priv_get_vvc_name(idx)) then
 
+        -- Mark instance id as in use
         if vvc_channel = TX then
           uart_tx_vvc_indexes_in_use(vvc_instance_id) <= '1';
         elsif vvc_channel = RX then
           uart_rx_vvc_indexes_in_use(vvc_instance_id) <= '1';
         end if;
 
+        -- Comma-separated string with VVC config
+        vvc_cfg := bfm_cfg_to_string(shared_uart_vvc_config(vvc_channel, vvc_instance_id).bfm_config);
+
       elsif strcmp("AXISTREAM_VVC", shared_vvc_activity_register.priv_get_vvc_name(idx)) then
+        -- Mark instance id as in use
         axis_vvc_indexes_in_use(vvc_instance_id) <= '1';
+
+        -- Comma-separated string with VVC config
+        vvc_cfg := bfm_cfg_to_string(shared_axistream_vvc_config(vvc_instance_id).bfm_config);
+      else
+        -- Unsupported VVC
+        vvc_cfg := bfm_cfg_to_string(VOID);
       end if;
+
+      -- Todo:
+      -- Rename to uvvm_cosim_vhpi_report_vvc_instance??
+
+      -- Report VVC info to cosim server via VHPI
+      uvvm_cosim_vhpi_report_vvc_info(
+        shared_vvc_activity_register.priv_get_vvc_name(idx),
+        to_string(vvc_channel),
+        vvc_instance_id,
+        vvc_cfg.all
+        );
+
+      deallocate(vvc_cfg);
 
     end loop;
 
