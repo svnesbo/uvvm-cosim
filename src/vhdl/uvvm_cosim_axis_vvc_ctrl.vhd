@@ -12,7 +12,8 @@ library bitvis_vip_axistream;
 context bitvis_vip_axistream.vvc_context;
 
 library work;
-use work.uvvm_cosim_priv_pkg.all;
+use work.uvvm_cosim_utils_pkg.all;
+use work.vhpi_cosim_methods_pkg.all;
 
 entity uvvm_cosim_axis_vvc_ctrl is
   generic (
@@ -26,7 +27,8 @@ end entity uvvm_cosim_axis_vvc_ctrl;
 
 architecture func of uvvm_cosim_axis_vvc_ctrl is
 
-  constant C_SCOPE : string    := "UVVM_COSIM_AXIS_VVC_CTRL";
+  constant C_SCOPE    : string := "UVVM_COSIM_AXIS_VVC_CTRL";
+  constant C_VVC_TYPE : string := "AXISTREAM_VVC";
 
 begin
 
@@ -58,14 +60,17 @@ begin
       wait until rising_edge(clk);
 
       -- Schedule VVC transmit commands
-      while axis_transmit_queue_empty(GC_VVC_IDX) = 0 loop
-        v_data := std_logic_vector(to_unsigned(axis_transmit_queue_get(GC_VVC_IDX), v_data'length));
+      while vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 0 loop
+        -- TODO:
+        -- For packet based transmit collect data in an slv_array buffer
+        -- until the 9-bit in v_data (end of packet) is set.
+        v_data := std_logic_vector(to_unsigned(vhpi_cosim_transmit_queue_get(C_VVC_TYPE, GC_VVC_IDX), v_data'length));
 
         log(ID_SEQUENCER, "Got byte to transmit: " & to_string(v_data, HEX), C_SCOPE);
 
         axistream_transmit(AXISTREAM_VVCT, GC_VVC_IDX, v_data, "Transmit from uvvm_cosim_axis_vvc_ctrl");
 
-        if axis_transmit_queue_empty(GC_VVC_IDX) = 1 then
+        if vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 1 then
           log(ID_SEQUENCER, "Transmit queue now empty for VVC index " & to_string(GC_VVC_IDX), C_SCOPE);
         end if;
 
@@ -88,7 +93,7 @@ begin
 
     function listen_enable (void : t_void) return boolean is
     begin
-      if cosim_vvc_listen_enable("AXISTREAM_VVC", "NA", GC_VVC_IDX) then
+      if vhpi_cosim_vvc_listen_enable("AXISTREAM_VVC", "NA", GC_VVC_IDX) then
         return true;
       else
         return false;
@@ -149,7 +154,13 @@ begin
             log(ID_SEQUENCER, "AXISTREAM VVC " & to_string(GC_VVC_IDX) & ": Transaction completed. Data: " & to_string(v_result_data.data_array(0 to v_result_data.data_length-1), HEX), C_SCOPE);
 
             for byte_num in 0 to v_result_data.data_length-1 loop
-              axis_receive_queue_put(GC_VVC_IDX, to_integer(unsigned(v_result_data.data_array(byte_num))));
+              vhpi_cosim_receive_queue_put(C_VVC_TYPE, GC_VVC_IDX,
+                                           to_integer(unsigned(v_result_data.data_array(byte_num))),
+                                           0 -- end_of_packet=false (not used)
+                                           );
+            -- TODO:
+            -- For packet based receive set the 9th bith (end of packet) in the
+            -- integer argument to vhpi_cosim_receive_queue_put on the last byte.
             end loop;
 
           end if;

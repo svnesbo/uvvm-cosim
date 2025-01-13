@@ -18,7 +18,8 @@ library bitvis_vip_axistream;
 context bitvis_vip_axistream.vvc_context;
 
 library work;
-use work.uvvm_cosim_priv_pkg.all;
+use work.uvvm_cosim_utils_pkg.all;
+use work.vhpi_cosim_methods_pkg.all;
 
 entity uvvm_cosim is
   generic (
@@ -37,57 +38,6 @@ architecture func of uvvm_cosim is
   signal uart_tx_vvc_indexes_in_use : std_logic_vector(0 to C_UART_VVC_MAX_INSTANCE_NUM-1)      := (others => '0');
   signal axis_vvc_indexes_in_use    : std_logic_vector(0 to C_AXISTREAM_VVC_MAX_INSTANCE_NUM-1) := (others => '0');
 
-  function strcmp (
-    constant str1 : string;
-    constant str2 : string)
-    return boolean is
-  begin
-    assert str1'length <= str2'length report "str1 can't be longer than str2" severity failure;
-
-    if str1(1 to str1'length) = str2(1 to str1'length) then
-      return true;
-    else
-      return false;
-    end if;
-  end function strcmp;
-
-  function bfm_cfg_to_string(
-    constant cfg : t_axistream_bfm_config)
-    return line
-  is
-    variable v_line : line := new string'("");
-  begin
-    write(v_line, string'("cosim_support=1,"));
-
-    if cfg.check_packet_length then
-      write(v_line, string'("packet_based=1,"));
-    else
-      write(v_line, string'("packet_based=0,"));
-    end if;
-    return v_line;
-  end function bfm_cfg_to_string;
-
-  function bfm_cfg_to_string(
-    constant cfg : t_uart_bfm_config)
-    return line
-  is
-    variable v_line : line := new string'("");
-  begin
-    write(v_line, string'("cosim_support=1,"));
-    return v_line;
-  end function bfm_cfg_to_string;
-
-  -- For unsupported VVCs/BFMs
-  function bfm_cfg_to_string(
-    constant void : t_void)
-    return line
-  is
-    variable v_line : line := new string'("");
-  begin
-    write(v_line, string'("cosim_support=0,"));
-    return v_line;
-  end function bfm_cfg_to_string;
-
 begin
 
   p_uvvm_cosim_init : process
@@ -103,7 +53,7 @@ begin
     if GC_SIM_RUN_CTRL_EN then
       log(ID_SEQUENCER, "Waiting to start simulation", C_SCOPE);
 
-      uvvm_cosim_vhpi_start_sim; -- Blocks until user says sim should start
+      vhpi_cosim_start_sim; -- Blocks until user says sim should start
 
       log(ID_SEQUENCER, "Starting simulation", C_SCOPE);
     end if;
@@ -146,7 +96,7 @@ begin
       -- Rename to uvvm_cosim_vhpi_report_vvc_instance??
 
       -- Report VVC info to cosim server via VHPI
-      uvvm_cosim_vhpi_report_vvc_info(
+      vhpi_cosim_report_vvc_info(
         shared_vvc_activity_register.priv_get_vvc_name(idx),
         to_string(vvc_channel),
         vvc_instance_id,

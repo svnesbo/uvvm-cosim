@@ -11,7 +11,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(NVC_PATH "/opt/nvc")
 
 # VHPI cosim library
-add_library(uvvm_cosim_vhpi SHARED src/cpp/uvvm_cosim_vhpi.cpp)
+add_library(uvvm_cosim_vhpi SHARED
+            src/cpp/uvvm_cosim_server.cpp
+            src/cpp/uvvm_cosim_vhpi.cpp)
 target_include_directories(uvvm_cosim_vhpi PRIVATE thirdparty/json-rpc-cxx/include thirdparty/json-rpc-cxx/vendor thirdparty/json-rpc-cxx/examples ${NVC_PATH}/include)
 set_property(TARGET uvvm_cosim_vhpi PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -28,5 +30,6 @@ add_custom_target(hdl_run
 
 
 # JSON RPC example client
-add_executable(uvvm_cosim_example_client src/cpp/uvvm_cosim_example_client.cpp)
+add_executable(uvvm_cosim_example_client
+               src/cpp/uvvm_cosim_client_example.cpp)
 target_include_directories(uvvm_cosim_example_client PRIVATE thirdparty/json-rpc-cxx/include thirdparty/json-rpc-cxx/vendor thirdparty/json-rpc-cxx/examples)
