@@ -9,18 +9,27 @@ def main():
         JSONRPCProtocol(),
         HttpPostClientTransport('http://localhost:8484/jsonrpc'))
 
-    response = rpc_client.call(method="GetVVCInfo", args=None, kwargs=None)
-    print(f"VVC info: {response}")
+    response = rpc_client.call(method="GetVvcList", args=None, kwargs=None)
+    print(f"VVC list response: {response}")
 
-    response = rpc_client.call(method="UartTransmit", args=None, kwargs={'data': [0xAA, 0xBB, 0xCC, 0xDD]}, one_way=False)
+    response = rpc_client.call(method="TransmitBytes", args=None,
+                               kwargs={"vvc_type": "UART_VVC",
+                                       "vvc_id": 0,
+                                       "data": [0xAA, 0xBB, 0xCC, 0xDD]},
+                               one_way=False)
     print(f"response = {response}")
 
     time.sleep(1.0)
 
-    response = rpc_client.call(method="UartReceive", args=None, kwargs={'length': 4, 'all_or_nothing': False}, one_way=False)
+    response = rpc_client.call(method="ReceiveBytes",
+                               args=None,
+                               kwargs={"vvc_type": "UART_VVC",
+                                       "vvc_id": 1,
+                                       "length": 4,
+                                       "all_or_nothing": False},
+                               one_way=False)
     print(f"response = {response}")
 
 
 if __name__ == '__main__':
     main()
-
