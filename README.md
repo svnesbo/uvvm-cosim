@@ -171,19 +171,19 @@ Another example, for a call to get the list of VVCs in the simulation:
 	    "vvc_cfg": {"cosim_support": 1}
 	  },
 	  {
-	    vvc_type: "UART_VVC",
+	    "vvc_type": "UART_VVC",
 	    "vvc_channel": "TX",
 	    "vvc_instance_id": 0,
 	    "vvc_cfg": {"cosim_support": 1}
 	  },
 	  {
-	    vvc_type: "AXISTREAM_VVC",
+	    "vvc_type": "AXISTREAM_VVC",
 	    "vvc_channel": "NA",
 	    "vvc_instance_id": 0,
 	    "vvc_cfg": {"cosim_support": 1, "packet_based": 0}
 	  },
 	  {
-	    vvc_type: "AXISTREAM_VVC",
+	    "vvc_type": "AXISTREAM_VVC",
 	    "vvc_channel": "NA",
 	    "vvc_instance_id": 1,
 	    "vvc_cfg": {"cosim_support": 1, "packet_based": 0}
