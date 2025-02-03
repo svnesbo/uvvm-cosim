@@ -58,7 +58,7 @@ def main():
         hr.settings.set_global_options(global_opts)
 
         # Todo: Add build directoy arg to run.py instead of hardcoding it to "build"
-        return hr.start(sim_options=[f"--load={project_path / "build" / "libuvvm_cosim_vhpi.so"}"])
+        return hr.start(sim_options=[f"--load={project_path / 'build' / 'libuvvm_cosim_vhpi.so'}"])
     else:
         return hr.start()
 
