@@ -39,11 +39,41 @@ int main(int argc, char** argv)
   using namespace std::chrono_literals;
 
   CppHttpLibClientConnector http_connector("localhost", 8484);
-  std::this_thread::sleep_for(0.5s);
-
   UvvmCosimClient client(http_connector);
 
-  std::cout << "Wait a bit more...." << std::endl;
+  std::cout << "Wait a bit...." << std::endl;
+
+  std::this_thread::sleep_for(1.0s);
+
+  std::cout << "Start sim...." << std::endl;
+
+  client.StartSim();
+
+  std::this_thread::sleep_for(0.5s);
+
+  std::cout << "Get VVC list...." << std::endl;
+
+  auto vvc_list = client.GetVvcList();
+
+  std::cout << "VVC list response: " << std::endl;
+  std::cout << vvc_list.result.dump(4) << std::endl << std::endl;
+
+  if (vvc_list.success && vvc_list.result.is_array()) {
+    for (auto &vvc_json : vvc_list.result) {
+      VvcInstance vvc = vvc_json;
+      std::cout << "Type: " << vvc.vvc_type << ", ";
+      std::cout << "Channel: " << vvc.vvc_channel << ", ";
+      std::cout << "Instance ID: " << vvc.vvc_instance_id << std::endl;
+
+      std::cout << "Config: ";
+      for (auto &cfg : vvc.vvc_cfg) {
+        std::cout << cfg.first << "=" << cfg.second << " ";
+      }
+      std::cout << std::endl << std::endl;
+    }
+  } else {
+    std::cout << "Failed to get VVC list: " << vvc_list.result["error"] << std::endl;
+  }
 
   std::this_thread::sleep_for(0.5s);
 
@@ -126,27 +156,4 @@ int main(int argc, char** argv)
     print_receive_result(res, "UART");
   }
 
-  std::cout << "Get info about VVCs" << std::endl;
-  auto vvc_list = client.GetVvcList();
-
-  std::cout << "VVC list response: " << std::endl;
-  std::cout << vvc_list.result.dump(4) << std::endl << std::endl;
-
-  if (vvc_list.success && vvc_list.result.is_array()) {
-    for (auto &vvc_json : vvc_list.result) {
-      VvcInstance vvc = vvc_json;
-      std::cout << "Type: " << vvc.vvc_type << ", ";
-      std::cout << "Channel: " << vvc.vvc_channel << ", ";
-      std::cout << "Instance ID: " << vvc.vvc_instance_id << std::endl;
-
-      std::cout << "Config: ";
-      for (auto &cfg : vvc.vvc_cfg) {
-        std::cout << cfg.first << "=" << cfg.second << " ";
-      }
-      std::cout << std::endl << std::endl;
-    }
-  } else {
-    std::cout << "Failed to get VVC list: " << vvc_list.result["error"] << std::endl;
-  }
-  
 }

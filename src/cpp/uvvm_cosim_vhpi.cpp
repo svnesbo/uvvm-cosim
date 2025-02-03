@@ -88,10 +88,7 @@ void vhpi_cosim_receive_queue_put(const vhpiCbDataT* p_cb_data)
 void vhpi_cosim_start_sim(const vhpiCbDataT* p_cb_data)
 {
   vhpi_printf("vhpi_cosim_start_sim: Waiting to start sim");
-
-  using namespace std::chrono_literals;
-  std::this_thread::sleep_for(2.0s);
-
+  cosim_server->WaitForStartSim();
   vhpi_printf("vhpi_cosim_start_sim: Starting sim");
 }
 

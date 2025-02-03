@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -20,10 +21,13 @@ private:
   // Comparator: VvcCompare
   shared_map<VvcInstance, VvcQueues, VvcCompare> vvcInstanceMap;
 
+  std::atomic<bool> startSim=false;
+
   // --------------------------------------------------------------------------
   // JSON-RPC remote procedures
   // --------------------------------------------------------------------------
 
+  JsonResponse StartSim();
   JsonResponse GetVvcList();
 
   JsonResponse TransmitBytes(std::string vvc_type, int vvc_id, std::vector<uint8_t> data);
@@ -59,6 +63,9 @@ public:
 
     jsonRpcServer.Add("GetVvcList",
                       GetHandle(&UvvmCosimServer::GetVvcList, *this), {});
+
+    jsonRpcServer.Add("StartSim",
+		      GetHandle(&UvvmCosimServer::StartSim, *this), {});
   }
 
   ~UvvmCosimServer()
@@ -79,6 +86,8 @@ public:
   {
     httpServer.StopListening();
   }
+
+  void WaitForStartSim();
 
   void AddVvc(std::string vvc_type, std::string vvc_channel,
 	      int vvc_instance_id, std::string vvc_cfg_str);

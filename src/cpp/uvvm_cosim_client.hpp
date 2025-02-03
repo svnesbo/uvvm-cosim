@@ -16,6 +16,10 @@ public:
   {
   }
 
+  JsonResponse StartSim() {
+    return CallMethod<JsonResponse>(requestId++, "StartSim", {});
+  }
+
   JsonResponse GetVvcList() {
     return CallMethod<JsonResponse>(requestId++, "GetVvcList", {});
   }

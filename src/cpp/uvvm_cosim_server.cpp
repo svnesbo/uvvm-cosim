@@ -62,6 +62,16 @@ static std::map<std::string, int> parse_vvc_cfg_str(const std::string& cfg_str)
 }
 
 void
+UvvmCosimServer::WaitForStartSim()
+{
+  using namespace std::chrono_literals;
+
+  while (!startSim) {
+    std::this_thread::sleep_for(10ms);
+  }
+}
+
+void
 UvvmCosimServer::AddVvc(std::string vvc_type, std::string vvc_channel,
 			int vvc_instance_id, std::string vvc_cfg_str)
 {
@@ -175,6 +185,18 @@ void UvvmCosimServer::ReceiveQueuePut(std::string vvc_type,
       std::cerr << " does not exist." << std::endl;
     }
   });
+}
+
+JsonResponse
+UvvmCosimServer::StartSim()
+{
+  startSim=true;
+
+  JsonResponse response = {
+    .success = false
+  };
+
+  return response;
 }
 
 JsonResponse
