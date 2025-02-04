@@ -1,3 +1,7 @@
+**NOTE: THIS REPO HAS MOVED. YOU CAN FIND THE NEW REPO AT:**
+https://github.com/Inventas-FPGA/uvvm_co-simulation
+
+
 # Co-simulation library for UVVM
 
 This library aims to make it easy to setup basic co-simulation for UVVM testbench, by enabling communication with your simulated DUT using VVCs instances in your testbench. Very few changes are required to integrate this with an existing testbench.
