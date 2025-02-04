@@ -43,7 +43,9 @@ begin
   -- the VVC if it tries to issue transmit to a receiver instance and vice versa.
 
   p_transmit : process
-    variable v_data : std_logic_vector(7 downto 0);
+    alias vvc_status         : t_vvc_status is shared_axistream_vvc_status(GC_VVC_IDX);
+    constant C_CMD_QUEUE_MAX : natural := 32;
+    variable v_data          : std_logic_vector(7 downto 0);
   begin
 
     wait until init_done = '1';
@@ -61,6 +63,21 @@ begin
 
       -- Schedule VVC transmit commands
       while vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 0 loop
+
+        -- TODO:
+        -- Gather up bytes in a byte array (t_slv_array) and start larger
+        -- transactions. Right now it's very inefficient memorywise.
+
+        --if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_COUNT_THRESHOLD then
+        if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_MAX then
+          -- Prevent command queue from overflowing (causes UVVM sim error)
+          -- Note that C_CMD_QUEUE_COUNT_THRESHOLD would probably be a reasonable
+          -- threshold, but NVC crashes with that value (seems like each entry
+          -- consumes quite a bit of memory).
+          log(ID_SEQUENCER, "Oops - AXI-Stream CMD queue almost full.", C_SCOPE);
+          exit;
+        end if;
+
         -- TODO:
         -- For packet based transmit collect data in an slv_array buffer
         -- until the 9-bit in v_data (end of packet) is set.

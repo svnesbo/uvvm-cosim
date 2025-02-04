@@ -34,7 +34,9 @@ architecture func of uvvm_cosim_uart_vvc_ctrl is
 begin
 
   p_transmit : process
-    variable v_data : std_logic_vector(7 downto 0);
+    alias vvc_status         : t_vvc_status is shared_uart_vvc_status(TX, GC_VVC_IDX);
+    constant C_CMD_QUEUE_MAX : natural := 32;
+    variable v_data          : std_logic_vector(7 downto 0);
   begin
 
     wait until init_done = '1';
@@ -52,6 +54,21 @@ begin
 
       -- Schedule VVC transmit commands
       while vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 0 loop
+
+        -- TODO:
+        -- Gather up bytes in a byte array (t_slv_array) and start larger
+        -- transactions. Right now it's very inefficient memorywise.
+
+        --if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_COUNT_THRESHOLD then
+        if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_MAX then
+          -- Prevent command queue from overflowing (causes UVVM sim error)
+          -- Note that C_CMD_QUEUE_COUNT_THRESHOLD would probably be a reasonable
+          -- threshold, but NVC crashes with that value (seems like each entry
+          -- consumes quite a bit of memory).
+          log(ID_SEQUENCER, "Oops - UART CMD queue almost full.", C_SCOPE);
+          exit;
+        end if;
+
         v_data := std_logic_vector(to_unsigned(vhpi_cosim_transmit_queue_get(C_VVC_TYPE, GC_VVC_IDX), v_data'length));
 
         log(ID_SEQUENCER, "Got byte to transmit: " & to_string(v_data, HEX), C_SCOPE);
