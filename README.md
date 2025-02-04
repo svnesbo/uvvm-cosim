@@ -13,7 +13,10 @@ The VHPI code and JSON-RPC server is written in C++ and there is a basic C++ cli
 
 ## Simulator support
 
-It has only been tested with NVC at the moment, but it may work with other simulators that support VHPI.
+It has only been tested with NVC at the moment, but it may work with other simulators that support VHPI. Older commits of NVC than [3b81846](https://github.com/nickg/nvc/commit/3b81846) may not work.
+
+For reference, this is likely because local variables are used for `libraryName` and `modelName` when registering foreign functions in `register_vhpi_foreign_method` in `uvvm_cosim_utils.hpp`.
+
 
 ## Integration in an existing testbench
 
