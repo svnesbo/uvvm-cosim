@@ -9,13 +9,17 @@ def main():
         JSONRPCProtocol(),
         HttpPostClientTransport('http://localhost:8484/jsonrpc'))
 
+    rpc_client.call(method="StartSim", args=None, kwargs=None)
+
+    time.sleep(0.5)
+
     response = rpc_client.call(method="GetVvcList", args=None, kwargs=None)
     print(f"VVC list response: {response}")
 
     response = rpc_client.call(method="TransmitBytes", args=None,
                                kwargs={"vvc_type": "UART_VVC",
                                        "vvc_id": 0,
-                                       "data": [0xAA, 0xBB, 0xCC, 0xDD]},
+                                       "data": [10, 20, 30, 40]},
                                one_way=False)
     print(f"response = {response}")
 

@@ -6,23 +6,35 @@ def main():
     url = "http://localhost:8484/jsonrpc"
 
     payload = {
-        "method": "GetVvcList",
+        "method": "StartSim",
         "params": [],
         "jsonrpc": "2.0",
         "id": 0,
     }
+    requests.post(url, json=payload).json()
+
+    time.sleep(0.5)
+
+    payload = {
+        "method": "GetVvcList",
+        "params": [],
+        "jsonrpc": "2.0",
+        "id": 1,
+    }
     response = requests.post(url, json=payload).json()
+    print(f"request = {payload}")
     print(f"VVC list response: {response}")
 
     payload = {
         "method": "TransmitBytes",
         "params": {"vvc_type": "UART_VVC",
                    "vvc_id": 0,
-                   "data": [0x12, 0x34, 0x56, 0x78, 0x9A]},
+                   "data": [10, 20, 30, 40, 50]},
         "jsonrpc": "2.0",
-        "id": 1,
+        "id": 2,
     }
     response = requests.post(url, json=payload).json()
+    print(f"request = {payload}")
     print(f"response = {response}")
 
     time.sleep(1.0)
@@ -34,9 +46,10 @@ def main():
                    "length": 5,
                    "all_or_nothing": False},
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": 3,
     }
     response = requests.post(url, json=payload).json()
+    print(f"request = {payload}")
     print(f"response = {response}")
 
 
