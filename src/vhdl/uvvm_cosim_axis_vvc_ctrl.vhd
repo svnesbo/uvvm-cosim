@@ -45,7 +45,8 @@ begin
   p_transmit : process
     alias vvc_status         : t_vvc_status is shared_axistream_vvc_status(GC_VVC_IDX);
     constant C_CMD_QUEUE_MAX : natural := 32;
-    variable v_data          : std_logic_vector(7 downto 0);
+    variable v_data          : t_slv_array(0 to C_AXISTREAM_VVC_CMD_DATA_MAX_BYTES-1)(7 downto 0);
+    variable v_byte_idx      : integer range 0 to C_AXISTREAM_VVC_CMD_DATA_MAX_BYTES;
   begin
 
     wait until init_done = '1';
@@ -61,37 +62,43 @@ begin
     loop
       wait until rising_edge(clk);
 
-      -- Schedule VVC transmit commands
+      v_byte_idx := 0;
+
+      -- Fetch bytes from cosim transmit queue
       while vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 0 loop
 
-        -- TODO:
-        -- Gather up bytes in a byte array (t_slv_array) and start larger
-        -- transactions. Right now it's very inefficient memorywise.
-
-        --if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_COUNT_THRESHOLD then
         if vvc_status.pending_cmd_cnt >= C_CMD_QUEUE_MAX then
           -- Prevent command queue from overflowing (causes UVVM sim error)
-          -- Note that C_CMD_QUEUE_COUNT_THRESHOLD would probably be a reasonable
-          -- threshold, but NVC crashes with that value (seems like each entry
-          -- consumes quite a bit of memory).
-          log(ID_SEQUENCER, "Oops - AXI-Stream CMD queue almost full.", C_SCOPE);
+          -- Note that C_CMD_QUEUE_COUNT_THRESHOLD would probably be a
+          -- reasonable threshold, but since each AXI-Stream VVC command entry
+          -- has a max-sized data buffer this will consume tons of memory.
+          exit;
+        end if;
+
+        if v_byte_idx = C_AXISTREAM_VVC_CMD_DATA_MAX_BYTES then
           exit;
         end if;
 
         -- TODO:
         -- For packet based transmit collect data in an slv_array buffer
-        -- until the 9-bit in v_data (end of packet) is set.
-        v_data := std_logic_vector(to_unsigned(vhpi_cosim_transmit_queue_get(C_VVC_TYPE, GC_VVC_IDX), v_data'length));
+        -- until the 9th bit in v_data (end of packet) is set.
+        v_data(v_byte_idx) := std_logic_vector(to_unsigned(vhpi_cosim_transmit_queue_get(C_VVC_TYPE, GC_VVC_IDX), v_data(0)'length));
 
-        log(ID_SEQUENCER, "Got byte to transmit: " & to_string(v_data, HEX), C_SCOPE);
-
-        axistream_transmit(AXISTREAM_VVCT, GC_VVC_IDX, v_data, "Transmit from uvvm_cosim_axis_vvc_ctrl");
+        v_byte_idx := v_byte_idx + 1;
 
         if vhpi_cosim_transmit_queue_empty(C_VVC_TYPE, GC_VVC_IDX) = 1 then
           log(ID_SEQUENCER, "Transmit queue now empty for VVC index " & to_string(GC_VVC_IDX), C_SCOPE);
         end if;
 
       end loop;
+
+      -- Transmit any bytes we got from cosim buffer
+      if v_byte_idx > 0 then
+        log(ID_SEQUENCER, "Got " & to_string(v_byte_idx) & " bytes to transmit on VVC " & to_string(GC_VVC_IDX), C_SCOPE);
+        axistream_transmit(AXISTREAM_VVCT, GC_VVC_IDX, v_data(0 to v_byte_idx-1),
+                           "Transmit " & to_string(v_byte_idx) & " bytes from uvvm_cosim_axis_vvc_ctrl");
+      end if;
+
     end loop;
 
   end process p_transmit;
